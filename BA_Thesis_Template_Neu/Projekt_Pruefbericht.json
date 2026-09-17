@@ -1,0 +1,38 @@
+{
+  "source": "BA Final LaTeX (2).docx",
+  "chapters": 11,
+  "chapter_files": [
+    "01_einleitung.tex",
+    "02_grundlagen.tex",
+    "03_verwandte_arbeiten.tex",
+    "04_methodik_versuchsaufbau.tex",
+    "05_benchmark_design.tex",
+    "06_implementierung.tex",
+    "07_messergebnisse.tex",
+    "08_diskussion.tex",
+    "09_validitaet.tex",
+    "10_fazit.tex",
+    "11_ausblick.tex"
+  ],
+  "metadata": {
+    "Studierender": "Nassim Akalai",
+    "Erstpruefer": "Prof. Dr. Oliver Hahm",
+    "Zweitpruefer": "David Merkl",
+    "Abgabedatum": "21.09.2026"
+  },
+  "conversion": {
+    "paragraphs": 887,
+    "tables": 1,
+    "headings": 92,
+    "purple_chars": 6839,
+    "green_chars": 6576,
+    "purple_segments": 454,
+    "green_segments": 222,
+    "codeblocks": 20,
+    "inline_math_groups": 33,
+    "display_math_blocks": 11,
+    "merged_code_paragraphs": 222
+  },
+  "template_class_sha256": "3fa2008b6cceb02c6d0bdc5102cbd1c3a450a0c2dabac8d665c237b52b97b9f5",
+  "source_class_sha256": "3fa2008b6cceb02c6d0bdc5102cbd1c3a450a0c2dabac8d665c237b52b97b9f5"
+}

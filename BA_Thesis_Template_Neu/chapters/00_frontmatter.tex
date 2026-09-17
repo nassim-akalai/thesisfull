@@ -1,0 +1,174 @@
+% !TeX spellcheck = en_Us
+%----------------------------------------------------------------------------------------
+%	TITLE PAGE
+%----------------------------------------------------------------------------------------
+
+\begin{titlepage}
+	\begin{center}
+		
+		\begin{figure}
+			\centering
+			\includegraphics[height=2cm,width=4cm]{images/frauas}
+			\label{fig:frauas}
+		\end{figure}
+		
+		%\vspace*{.06\textheight}
+		%{\scshape\LARGE \univname\par}\vspace{1cm} % University name
+		\textsc{\Large Bachelor Thesis}\\[0.5cm] % Thesis type
+		
+		\HRule \\[0.4cm] % Horizontal line
+		{\large \bfseries \ttitle\par}\vspace{0.2cm} % Thesis title
+		\HRule \\[1cm] % Horizontal line
+		
+		\begin{minipage}[t]{0.4\textwidth}
+			\begin{flushleft} \large
+				\emph{Studierender:}\\
+				{\authorname}\\[2pt] % Author name - remove the \href bracket to remove the link
+				
+			\end{flushleft}
+		\end{minipage}
+		\begin{minipage}[t]{0.4\textwidth}
+			\begin{flushright} \large
+				\emph{Erstpr\"ufer:} \\
+				{\examname}\\[1cm] % Supervisor name - remove the \href bracket to remove the link  
+				\emph{Zweitpr\"ufer:} \\
+				{\supname} % Supervisor name - remove the \href bracket to remove the link  
+			\end{flushright}
+		\end{minipage}\\[1cm]
+		
+		
+		\vfill
+		
+		\large \textit{Eingereicht zur Erlangung\\ des akademischen Grades des \degreename}\\[0.3cm] % University requirement text
+		\textit{an der}\\[0.4cm]
+		\deptname\\\groupname\\[1cm] % Research group name and department name
+		
+		\vfill
+		
+		{\large \submissiondate} % Date
+		
+		\vfill
+	\end{center}
+\end{titlepage}
+
+%----------------------------------------------------------------------------------------
+%	DECLARATION PAGE
+%----------------------------------------------------------------------------------------
+\begin{declaration}
+	\addchaptertocentry{\authorshipname}
+	Ich, \mbox{\authorname}, versichere, dass ich die vorliegende Bachelorarbeit mit dem Titel
+	\glqq\textbf{\ttitle}\grqq{} selbstst\"andig und ohne unzul\"assige fremde Hilfe angefertigt habe.
+	Alle verwendeten Quellen und Hilfsmittel sind als solche kenntlich gemacht. Die Arbeit wurde
+	in gleicher oder \"ahnlicher Form noch keiner anderen Pr\"ufungsbeh\"orde vorgelegt.\\[1cm]
+	\noindent Nassim Akalai \\
+	\noindent Frankfurt am Main, \submissiondate
+\end{declaration}
+
+
+%----------------------------------------------------------------------------------------
+%	QUOTATION PAGE
+%----------------------------------------------------------------------------------------
+
+
+%----------------------------------------------------------------------------------------
+%	ABSTRACT PAGE
+%----------------------------------------------------------------------------------------
+
+\begin{abstract}
+	\addchaptertocentry{Zusammenfassung}
+	\begin{center}{\huge\textit{Zusammenfassung}\par}\end{center}\bigskip
+	Diese Arbeit untersucht, wie sich verschiedene Konfigurationen des Echtzeitbetriebssystems Zephyr auf dessen Laufzeitverhalten und Speicherbedarf auf ressourcenbeschr\"ankter Hardware auswirken. Als Zielplattform dient das nRF52840 Development Kit mit einem Arm-Cortex-M4F-Prozessor. Verglichen werden eine Minimal-Konfiguration, eine darauf aufbauende Konfiguration mit aktiviertem Logging-Subsystem und eine IoT-Konfiguration mit OpenThread, CoAP und DTLS. Zur reproduzierbaren Leistungsbewertung werden Kontextwechsel-Latenz, Interrupt-Latenz, Timer-Jitter, Heap-Allokationsgeschwindigkeit, Heap-Fragmentierung und der statische RAM- und ROM-Bedarf untersucht. Kurze Laufzeitvorg\"ange werden mit dem DWT-Zyklenz\"ahler erfasst, w\"ahrend f\"ur die periodische Timer-Messung der RTC-basierte Systemtimer benutzt wird. Minimum, Maximum, Mittelwert und Stichprobenstandardabweichung werden mit dem Welford-Algorithmus laufend berechnet. Getrennte Firmware-Abbilder f\"ur jede Kombination aus Konfiguration und Benchmark begrenzen dabei die gegenseitige Beeinflussung der Messungen. Die entwickelte Messumgebung stellt ein nachvollziehbares Verfahren bereit, mit dem sich der Einfluss von ausgew\"ahlten Zephyr-Subsystemen auf derselben Hardwareplattform vergleichen l\"asst. Dar\"uber hinaus demonstriert eine praxisnahe Sensoranwendung die Verwendung von CoAP \"uber DTLS und einen Firmware-Aktualisierungspfad mit MCUboot und MCUmgr.
+\end{abstract}
+
+\begin{extraAbstract}[\null]
+	\addchaptertocentry{Abstract}
+	This thesis investigates how different configurations of the Zephyr real-time operating system affect runtime behavior and memory requirements on resource-constrained hardware. The target platform is the nRF52840 Development Kit with an Arm Cortex-M4F processor. Three configurations are compared: a minimal configuration, a configuration derived from it with the logging subsystem enabled, and an IoT configuration which implements OpenThread, CoAP, and DTLS. The reproducible performance evaluation covers context-switch latency, interrupt latency, timer jitter, heap allocation time, heap fragmentation and static RAM and ROM usage. Short runtime operations are measured using the DWT cycle counter, while periodic timer measurements use the RTC-based system timer. Minimum, maximum, mean, and sample standard deviation are calculated online using Welford's algorithm. Separate firmware images for every combination of configuration and benchmark limit interference between measurements. The resulting measurement environment provides a traceable method for comparing the impact of selected Zephyr subsystems on the same hardware platform. In addition, a practical sensor application demonstrates CoAP over DTLS and a firmware update path based on MCUboot and MCUmgr.
+\end{extraAbstract}
+
+%----------------------------------------------------------------------------------------
+%	ACKNOWLEDGEMENTS
+%----------------------------------------------------------------------------------------
+
+%\begin{acknowledgements}
+%	\addchaptertocentry{\acknowledgementname} % Add the acknowledgements to the table of contents
+%	...
+%\end{acknowledgements}
+
+%----------------------------------------------------------------------------------------
+%	LIST OF CONTENTS/FIGURES/TABLES PAGES
+%----------------------------------------------------------------------------------------
+
+\tableofcontents % Prints the main table of contents
+
+\listoffigures % Prints the list of figures
+
+%\listoftables % Prints the list of tables
+
+%\renewcommand\lstlistlistingname{List of Listings}
+%\lstlistoflistings % Prints Listings
+
+%----------------------------------------------------------------------------------------
+%	ABBREVIATIONS
+%----------------------------------------------------------------------------------------
+%
+
+%\begin{abbreviations}{\textbf{SARS-CoV-2}}
+%	\item[\textbf{ACK}]			Acknowledgement 
+%	\item[\textbf{APL}] 		Application Layer
+%	\item[\textbf{APS}] 		Application Support Sublayer
+%	\item[\textbf{SARS-CoV-2}] 	Severe Acute Respiratory Syndrome Corona Virus Type 2
+%\end{abbreviations}
+
+%----------------------------------------------------------------------------------------
+%	LIST OF SYMBOLS
+%----------------------------------------------------------------------------------------
+%\begin{listofsymbols}{$CO_2eq$}
+%	
+%	\listsubtitle{Elements}
+%	\item[$CO_2$] 		Carbon Dioxide
+%	\item[$CO_2eq$] 	Carbon Dioxide Equivalent
+%	\item[$N_2$]		Nitrogen
+%	\item[$O_2$]		Oxygen
+%	
+%	\vspace{1cm}
+%	
+%	\listsubtitle{Units}
+%	
+%	\item[$A$] 			Ampere
+%	\item[$\celsius$] 	Celsius
+%	\item[$mA$] 		Milli-Ampere
+%	\item[${\mu}A$]		Micro-Ampere
+%	\item[$ppb$] 		Parts Per Billion
+%	\item[$ppm$] 		Parts Per Million
+%	\item[$V$]			Volt
+%	
+%\end{listofsymbols}
+
+
+%----------------------------------------------------------------------------------------
+%	PHYSICAL CONSTANTS/OTHER DEFINITIONS
+%----------------------------------------------------------------------------------------
+
+%----------------------------------------------------------------------------------------
+%	SYMBOLS
+%----------------------------------------------------------------------------------------
+%\begin{symbols}{lll} % Include a list of Symbols (a three column table)
+%	
+%	$C$ & Kapazit{\"a}t & \si{\farad} \\
+%	$I$ & Strom & \si{\ampere} \\
+%	$U$ & Spannung & \si{\volt} \\
+%	$R$ & Widerstand & \si{\ohm} \\
+%	$P$ & Leistung & \si{\watt} \\
+%	$f$ & Frequenz & \si{\hertz} \\
+%	%Symbol & Name & Unit \\
+%	
+%	\addlinespace % Gap to separate the Roman symbols from the Greek
+%	
+%
+%\end{symbols}
+
+%----------------------------------------------------------------------------------------
+%	DEDICATION
+%----------------------------------------------------------------------------------------
+
+%\dedicatory{Gewidmet meiner Familie.\\ Vielen Dank!} 
