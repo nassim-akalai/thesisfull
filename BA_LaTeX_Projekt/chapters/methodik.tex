@@ -1,0 +1,160 @@
+% Automatisch aus der Word-/LaTeX-Konvertierung übernommen.
+\chapter{Methodik und Versuchsaufbau}
+
+In diesem Kapitel wird gezeigt, wie die in Kapitel 1 formulierte Forschungsfrage empirisch untersucht wird, bevor in den nachfolgenden Kapiteln die Implementierung und die Ergebnisse folgen. Zuerst wird das grundlegende Forschungsdesign vorgestellt und in die unabhängige, die abhängigen und die kontrollierten Variablen des Versuchsplans unterteilt (4.1). Anschließend werden die verwendete Zielplattform (4.2) und die Softwareumgebung (4.3) beschrieben. Zudem wird die unabhängige variable, die drei Konfigurationen (4.4) und die fünf Laufzeit- und Heap-Benchmarks und den dabei bestimmten statischen RAM-/ROM-Fußabdruck, also die eigentlichen Benchmark-Metriken (4.5) erläutert. Zuletzt wird eine vollständige Übersicht der kontrollierten Variablen (4.6) erstellt, welche über alle Konfigurationsstufen und Metriken hinweg konstant bleibt. Dadurch werden die Reproduzierbarkeit und die Aussagekraft des Konfigurationsvergleichs sichergestellt.
+
+\section{Forschungsdesign}
+Die Arbeit verfolgt ein quantitatives und experimentelles Forschungsdesign mit kontrollierter Variation der Zephyr-Konfiguration. Dabei werden wiederholte Messungen auf derselben Hardwareplattform durchgeführt. Dieselbe physische Plattform, ein nrf52840-DK, durchläuft nacheinander drei Firmware-Builds, die sich jeweils in der zu untersuchenden Kernel-/ Stack-Konfiguration unterscheiden. Alle übrigen relevanten Rahmenbedingungen, darunter Hardware, CPU-Taktfrequenz, Zephyr-Version, Compiler und Messverfahren, werden dabei konstant gehalten. Dadurch werden hardwarebedingte Unterschiede zwischen den Messungen minimiert. Zudem können Unterschiede in den Messergebnissen auf die Konfigurationsänderungen zurückgeführt werden, soweit andere Einflussfaktoren kontrolliert werden. Quantitativ bedeutet im Kontext dieser Untersuchung, dass diese anhand von messbaren numerischen Größen durchgeführt wird. Zudem bedeutet experimentell, dass Einflussfaktoren gezielt verändert werden und beobachtet wird, wie sich dadurch eine abhängige Messgröße verändert.
+
+Das Versuchsdesign folgt somit der klassischen Struktur eines kontrollierten Experiments:
+
+\begin{itemize}
+\item \textbf{Unabhängige Variable (UV):} Die aktive Zephyr-Konfiguration (Minimal, Logging, IoT-Stack) ist der zu manipulierende Faktor.
+\item \textbf{Abhängige Variablen (AV):} Die fünf gemessenen RTOS-Leistungsmetriken (Context-Switch, Interrupt Latenz, Timer-Jitter, Heap-Allokationsgeschwindigkeit, Heap-Fragmentierung), wobei hierbei die Wirkung der Zephyr-Konfigurationen beobachtet wird.
+\item \textbf{Kontrollierte Variablen:} Alle für die Messung relevanten Rahmenbedingungen, die zwischen den Durchläufen konstant gehalten werden, um Reproduzierbarkeit zu ermöglichen. Dazu gehören die verwendete Hardware, CPU-Taktfrequenz, Compiler, Zephyr-Version, Messverfahren, Stichprobenumfang und Umgebung. Die Anzahl der Messwiederholungen und der Messmechanismus für die Datenerhebung für alle Konfigurationen sind ebenfalls festgelegt.
+\end{itemize}
+Jede Kombination aus Konfiguration und Metrik (In der restlichen Arbeit als „Zelle“ bezeichnet) wird als eigenständiges, minimales Firmware-Image gebaut. Dabei wählt CMakeLists.txt durch die Methode \lstinline[style=fileinline]|target_sources_ifdef| genau eine \lstinline[style=fileinline]|bm_*.c|-Datei zur Build-Zeit aus. \lstinline[style=fileinline]|Kconfig| macht darüber hinaus die Auswahl über \lstinline[style=fileinline]|choice BENCH_TYPE| explizit. Die getrennten Firmware-Images verringern dabei die gegenseitige Beeinflussung durch gleichzeitig eingebundenen Benchmark-Code. Unterschiede im erzeugten Speicherlayout bleiben jedoch dennoch möglich.
+
+Die drei Konfigurationsstufen sind zudem kumulativ/ inkrementell angelegt. Das Logging-Profil entsteht, indem \lstinline[style=fileinline]|minimal.conf| und das Konfigurationsfragment \lstinline[style=fileinline]|logging.conf| gemeinsam eingebunden werden. Dabei enthält \lstinline[style=fileinline]|logging.conf| nur die Einstellungen für das Logging-Subsystem und bildet damit die Konfigurationsdifferenz im Vergleich zu der Minimal-Konfiguration. Dadurch wird nicht nur das IoT-Stack mit dem Kernel-Build verglichen, sondern auch der isolierte Effekt einzelner Subsysteme, in diesem Fall das Logging-Subsystem, dass sauber quantifizierbar bleibt. Durch diese Methodik wird eine Stufenanalyse ermöglicht anstelle eines Zwei-Gruppen-Vergleichs.
+
+Für jede Zelle des Versuchsplans wird eine Stichprobe von \(N\) Messwerten erhoben, aus der deskriptive Kennzahlen berechnet werden. Diese sind das Minimum, Maximum, der Mittelwert und die Stichproben-Standardabweichung. Außerdem existiert ein Referenzpunkt gegen Zephyrs eigene Benchmarks, welche dieselbe Timing-API benutzen. Dies dient als externe Validierung der selbst entwickelten Messungen.
+
+\section{Zielplattform}
+Als Zielplattform für die Untersuchungen wird das nRF52840 Development Kit von Nordic Semiconductor verwendet. Die Plattform basiert auf einem 32-Bit Arm Cortex-M4 mit einer Taktfrequenz von 64 MHz und verfügt über 1 MB Flash-Speicher sowie 256 kB RAM. Damit bietet der Mikrocontroller eine klar definierte und ressourcenbeschränkte Hardwarebasis für die Untersuchung des Laufzeit- und Speicherverhaltens von Zephyr RTOS.
+
+Für die Untersuchung der Laufzeiteigenschaften sind vor allem der Nested Vectored Interrupt Controller (NVIC) und der Data Watchpoint and Trace (DWT) des Cortex-M4 relevant. Der NVIC übernimmt die Verarbeitung und Priorisierung von Interrupts und bildet damit die hardwareseitige Grundlage für die Messung der Interrupt-Latenz. Der DWT ermöglicht die Erfassung von CPU-Taktzyklen und wird für die hochauflösende Laufzeitmessung der Benchmarks eingesetzt. Bei 64 MHz entspricht ein CPU-Zyklus 15,625 ns, wodurch bspw. Kontextwechsel- und Interrupt-Laufzeiten mit hoher zeitlicher Auflösung bestimmt werden können.
+
+Für die Untersuchung des Timer-Jitters wird auf der anderen Seite die RTC-basierte Zeitbasis von Zephyr verwendet. In der verwendeten Konfiguration wird hierfür RTC1 mit einem 32,768-kHz-Low-Frequency-Clock betrieben. Da diese Zeitbasis auch während des Prozessorschlafs weiterläuft, eignet sie sich zur Messung periodischer Timerintervalle im Tickless-Betrieb. Die resultierende Auflösung beträgt etwa 30,5 µs pro Tick. Die Kombination aus Cortex-M4, Interrupt- und Zeitgeberhardware sowie den begrenzten Speicherressourcen bildet damit die technische Grundlage für die durchgeführten Benchmarks (Nordic Semiconductor, o. D., Abschnitt 6.20; Zephyr Project, 2024, nrf\_rtc\_timer.c, Tag v3.7.2).
+
+\section{Softwareumgebung}
+Das Build befindet sich auf demselben Ubuntu-Host im Arbeitsbereich \lstinline[style=fileinline]|~/zephyr-ws|. Dabei handelt es sich um eine eigene Python-venv (Virtual Environment). Das Flashen auf den Mikrocontroller erfolgt über denselben J-Link-OB-Debugprobe via \lstinline[style=fileinline]|west flash| (nrfjprog-Runner). Die Ausgabe erfolgt dann über denselben UART/ VCOM-Kanal. Pro Messung werden ebenfalls der Commit-Hash und das verwendete \lstinline[style=fileinline]|EXTRA_CONF_FILE| notiert.
+
+\section{Unabhängige Variablen}
+Die UV werden als Kconfig-Fragmente realisiert, das über \lstinline[style=fileinline]|EXTRA_CONF_FILE| zusätzlich zur minimalen Basis \lstinline[style=fileinline]|prj.conf| der Mess-App eingebunden wird. Die Basis enthält nur das, was für jede Messung zwingend nötig ist, darunter die Timing-API, UART/ printk-Ausgabe und das Heap für die Allocation-Benchmarks. Diese Basis ist bewusst identisch in allen drei Konfigurationsstufen, damit diese nicht Teil der Variation wird.
+
+\subsection{Minimal Konfiguration}
+Der schlanke RTOS-Kern ohne jegliche Zusatzdienste. Boot-Banner, Timeslicing, Assertions, Logging, Thread-Namen, MPU/ Stack-Guard, SEGGER-RTT und GPIO-Treiber sind explizit deaktiviert. Diese Konfigurationsstufe dient als Baseline und liefert die verringerten Kosten der untersuchten Kerneloperationen inklusive der im Messpfad verbleibenden Anteile. Besonders ohne MPU-bedingte Stack-Guard-Reprogrammierung bei jedem Context Switch und ohne durch Timeslicing verursachte Scheduler-Unterbrechungen.
+
+\subsection{Logging}
+Diese Konfiguration baut auf der Minimal-Konfiguration auf und aktiviert das Zephyr-Logging-Subsystem im Deferred-Modus. \lstinline[style=fileinline]|CONFIG_LOG_PRINTK=n| verhindert, dass die über \lstinline[style=fileinline]|printk()| ausgegebenen Benchmark-Ergebnisse in das Logging-Subsystem umgeleitet werden. BENCHMETA-, BENCH- und BENCHEND-Zeilen bleiben dadurch auf dem synchronen printk-/ UART-Pfad. Das Logging-Backend verwendet dabei ebenfalls UART. Die Benchmark-Implementierungen erzeugen jedoch selbst keine LOG\_*-Nachrichten. Gemessen werden daher vor allem Speicherbedarf, Initialisierung, vorhandene Logging-Strukturen und mögliche indirekte Layout- oder Hintergrundeffekte, nicht die Kosten eines fortlaufenden Nachrichtenstroms.
+
+\subsection{IoT-Stack}
+Diese Konfiguration baut ebenfalls auf der Minimal-Konfiguration auf. Es wird zudem durch Netzwerk- und Sicherheits-Subsysteme erweitert, welche für einen IoT-Anwendungsfall typisch sind. Dabei handelt es sich um OpenThread als Minimal Thread Device (MTD), CoAP und eine DTLS-Absicherung über einen Pre-Shared Key (siehe 2.7). MCUmgr und MCUboot sind hierbei bewusst nicht Teil der Konfigurationsstufe, da diese am Sysbuild-Mechanismus hängen und daher nichts zur Frage beitragen, wie sich Netzwerk- und Sicherheits-Subsysteme die fünf Laufzeitmetriken beeinflussen. Sie werden daher in der Anwendung \lstinline[style=fileinline]|iot_sensor| betrachtet (siehe 6.4). Zudem wurde über \lstinline[style=fileinline]|CONFIG_OPENTHREAD_MANUAL_START=y| der Thread konfiguriert, damit die Benchmarks nicht durch endlose Netzwerk-Beitrittsversuche ohne vorhandenen Thread-Koordinator gestört werden. Durch \lstinline[style=fileinline]|CONFIG_OPENTHREAD_MANUAL_START=y| wird kein automatischer Netzwerkbeitritt gestartet. Der OpenThread-Netzwerkbetrieb bleibt während der Benchmarks inaktiv. Erfasst werden dabei das aktivierte Softwareprofil, sein statischer Speicherbedarf, Initialisierung und vorhandene Kernelobjekte. Der aktive Mesh-Verkehr und ein DTLS-Handshake werden hierbei nicht gemessen.
+
+\section{Abhängige Variablen}
+Die DWT-basierten Benchmarks für Kontextwechsel, Interrupt-Latenz und Heap-Allokation benutzen Zeitstempel über \lstinline[style=fileinline]|bench_now()|, einen kalibrierten Abzug des Messaufwands und \lstinline[style=fileinline]|struct bench_stats|. Der Timer-Benchmark benutzt dieselbe Statistik und Ergebnisausgabe, liest jedoch RTC-Systemtimerzyklen über \lstinline[style=fileinline]|sys_clock_cycle_get_32()|. Die Heap-Fragmentierung ist keine Zeitmessung und besitzt deshalb keinen Zeitstempel und keinen Abzug des Messaufwands oder Welford-Statistik.
+
+\subsection{Context-Switch-Latenz}
+Der Context-Switch wurde im Benchmark \lstinline[style=fileinline]|bm_ctx_switch.c| implementiert. Hier wird die Zeit vom Auslösen eines Threadwechsels bis zum Zeitstempel als erster C-seitiger Aktion im Zielthread gemessen. Dies erfolgt in zwei Varianten:
+
+\lstinline[style=fileinline]|ctx_switch_sem_wakeup|: Semaphore-geweckter höherpriorer Worker-Thread
+
+\lstinline[style=fileinline]|ctx_switch_yield|: Kooperatives Ping-Pong von gleichprioren Threads via \lstinline[style=fileinline]|k_yield()|.
+
+Dieser Benchmark erfasst dabei die Scheduler-Entscheidung inklusive PendSV-Kontextwechsel, die Grundkosten jeder Multithreading-Architektur. Dies bildet die zentrale Vergleichsgröße zwischen den drei Konfigurationen.
+
+\subsection{Interrupt-Latenz}
+Die Interrupt-Latenz wurde im Benchmark \lstinline[style=fileinline]|bm_irq_latency.c| implementiert. Es wird die Zeit vom Software-Trigger bis zum Zeitstempel am Anfang des registrierten C-Handlers gemessen. Der Exception-Eintritt, Zephyr-Wrapper und Compiler-Prolog liegen schon davor und sind Teil des Messwerts. Dies erfolgt durch \lstinline[style=fileinline]|NVIC_SetPendingIRQ| auf einer ungenutzten Peripherie-Leitung des nrf52840. Dieser Benchmark zeigt, wie stark Kernel-Funktionen, wie bspw. Logging, den Determinismus-kritischsten Pfad eines RTOS beeinflussen.
+
+\subsection{Timer-Jitter}
+Der Benchmark \lstinline[style=fileinline]|bm_timer_jitter.c| erfasst die Abstände zwischen aufeinanderfolgenden Zählerzugriffen im Callback eines periodischen 10-ms-\lstinline[style=fileinline]|k_timer|. Dafür wird \lstinline[style=fileinline]|sys_clock_cycle_get_32()| verwendet. Die Ausgabe heißt \lstinline[style=fileinline]|timer_period_rtc_cycles| und besitzt die Einheit RTC-Systemtimerzyklen. \lstinline[style=fileinline]|TIMERMETA| gibt die Frequenz und die mit \lstinline[style=fileinline]|k_ms_to_cyc_ceil32()| berechnete Periode an. Der Benchmark gibt Periodenwerte aus. Die Abweichung und Streuung im Vergleich zur Sollperiode werden daraus ausgewertet.
+
+\subsection{Heap-Allokationsgeschwindigkeit}
+Die Heap-Allokationsgeschwindigkeit wurde im Benchmark \lstinline[style=fileinline]|bm_heap_alloc.c| implementiert. Hier wird die Zeit für die Funktionen \lstinline[style=fileinline]|k_malloc| und \lstinline[style=fileinline]|k_free| eines 64-Byte-Blocks gemessen. Allokation und Freigabe folgen direkt aufeinander. Dadurch bleibt der Systemheap nahezu leer und unfragmentiert, sodass ein vorteilhafter Ausgangszustand untersucht wird. Dieser Benchmark ist relevant, weil \lstinline[style=fileinline]|sys_heap| eine variable Laufzeit hat, was für RTS kritisch ist.
+
+\subsection{Heap-Fragmentierung}
+Die Heap-Fragmentierung wurde im Benchmark \lstinline[style=fileinline]|bm_heap_frag.c| implementiert. Hierbei handelt es sich nicht um ein Zeit-, sondern um ein Zustandsmaß. Ein eigener 8-KiB k\_heap wird mit 32x128-Byte-Blöcken gefüllt. Dabei wird im Schachbrettmuster jeder zweite freigegeben und anschließend die angeforderten Nutzbytes, die rechnerisch nicht angeforderten Bytes und die größte im 8-Byte-Suchraster erfolgreich geprüfte Einzelanforderung protokolliert. Dieser Freiblock wird durch eine eigene Bisektions-Probe protokolliert, da \lstinline[style=fileinline]|sys_heap| diese Kennzahl nicht direkt liefert. Dieser Benchmark zeigt ein für MMU-lose Systeme spezifisches Risiko: Rechnerisch ausreichender, aber durch Fragmentierung nicht mehr am Stück nutzbarer Speicher.
+
+Kontextwechsel, Interrupt-Latenz und Heap-Allokation liefern CPU-Zyklen. Der Timer-Benchmark liefert RTC-Systemtimerzyklen. Die jeweilige Einheit ergibt sich dabei aus dem Metriknamen und \lstinline[style=fileinline]|TIMERMETA|. Die Heap-Fragmentierung liefert Nutzbyte-Buchführungswerte und Probe-Ergebnisse in Byte und benutzt deshalb \lstinline[style=fileinline]|HEAPSTATS| und \lstinline[style=fileinline]|HEAPPROBE|.
+
+\section{Kontrollierte Variablen}
+Diese Variablen werden über alle Konfigurationsstufen und Metriken hinweg konstant gehalten, um zu verhindern, dass Effekte fälschlich der UV zugeschreiben werden.
+
+\subsection{Hardware/ CPU-Frequenz}
+Ein einziges physisches Board, das Nordic nrf52840 DK, mit einer CPU basierend auf der Cortex-M4F Architektur und einer Takt-Frequenz von 64 MHz. Es verfügt über 1 MB Flash und 256 KB RAM. Die Frequenz wird darüber hinaus zur Laufzeitkontrolle bei jedem Boot über die Methode \lstinline[style=fileinline]|timing_freq_get()| in der \lstinline[style=fileinline]|BENCHMETA|-Zeile in \lstinline[style=fileinline]|main.c| mit ausgegeben. Falls es also zu einer Abweichung in der Takt-Frequenz kommen sollte, wäre dies sofort sichtbar.
+
+\subsection{Compiler und Werkzeugkette}
+In dieser Untersuchung wurde das Zephyr Software Development Kit (SDK) 0.16.9 verwendet. Der Compiler ist daher GCC 12.2.0, mit Binutils 2.38 und der Picolibc 1.8.6. Diese wurden über ZEPHYR\_SDK\_INSTALL\_DIR gepinnt, sodass sie identisch für alle Builds sind.
+
+\subsection{Compiler optimierung}
+Keines der drei Konfigurationsfragmente ändert das Optimierungsniveau. Vor der Ergebnisinterpretation muss durch Compileraufrufe bestätigt und dokumentiert werden, dass alle Builds mit derselben Zephyr-Optimierung erstellt wurden.
+
+\subsection{Zephyr Version}
+Für diese Untersuchung wird Zephyr v3.7.2 aus der Long-Term-Support-Reihe 3.7 verwendet. Dies wurde im Manifest \lstinline[style=fileinline]|west.yml| über revision: 3.7.2 mit \lstinline[style=fileinline]|import: true| gepinnt. Dies übernimmt passende HAL-, MCUBoot-, mbedTLS- und OpenThread-Revisionen. Das gepinnte Manifest legt hierbei den vorgesehenen Versionsstand fest. Für die Reproduzierbarkeit ist darüber hinaus zu dokumentieren, welcher Stand wirklich ausgecheckt und gebaut wurde.
+
+\subsection{Build-Konfiguration (Sockel)}
+Die in \lstinline[style=fileinline]|prj.conf| definierte Basis ist für alle drei UV-Stufen identisch. Diese beinhaltet \lstinline[style=fileinline]|Benchlib, printk/ UART/ Konsole, CONFIG_CBPRINTF_FP_SUPPORT| für Fließkomma-Ausgabe der Statistik und einen 64-KiB-System-Heap. Diese Basis wird nicht durch die Konfigurationen verändert, sondern lediglich ergänzt. Dadurch bleibt bspw. der ROM-Messaufwand der Fließkomma-Ausgabe in jeder Konfiguration gleich groß und ermöglicht somit einen Vergleich.
+
+\subsection{Messmechanismus (Timing/ Statistik)}
+Die kurzen Laufzeitmessungen benutzen Zephyrs Timing-API und auf dem Cortex-M4F den DWT-Zyklenzähler. Zwei direkt aufeinanderfolgende Reads werden 100-mal gemessen. Das kleinste beobachtete Delta wird von den DWT-basierten Ergebnissen abgezogen. Der Timer-Benchmark benutzt stattdessen den RTC1-basierten Systemtimer und keinen Abzug vom DWT-Messaufwand.
+
+\[t_i = \frac{c_i}{64\,000\,000}\,\mathrm{s}\]
+\[t_i = \frac{c_i}{32\,768}\,\mathrm{s}\]
+\[t_i = \frac{c_i}{32\,768}\,\mathrm{s}\]
+Die Welford-Statistik berechnet Minimum, Maximum, Mittelwert und Stichproben-Standardabweichung für die wiederholten Zeit- bzw. Periodenwerte. Heap-Fragmentierung und statischer Speicherbedarf werden dabei nicht mit dieser Statistik ausgewertet.
+
+\subsection{Anzahl der Messungen}
+Für die wiederholten DWT- und Timer-Messreihen werden 1000 Werte nach zehn verworfenen Warm-up-Perioden bzw. -Durchläufen ausgewertet. Diese Parameter werden über \lstinline[style=fileinline]|CONFIG_BENCHLIB_ITERATIONS| und \lstinline[style=fileinline]|CONFIG_BENCHLIB_WARMUP| dokumentiert. Heap-Fragmentierung und RAM-/ ROM-Bedarf sind auf der anderen Seite phasenbezogene Zustands- bzw. Build-Messungen und besitzen daher keine Stichprobe aus 1000 Wiederholungen.
+
+\section{Ablauf einer Messung}
+Dieser Abschnitt beschreibt den kompletten Ablauf einer Messung, welcher für jede Messzelle gleich ist. Dabei wird kurz gezeigt, wie der Arbeitsbereich eingerichtet wird. Die Werkzeugkette wird ebenfalls einmal eingerichtet. Das eigentliche Bauen, Flashen, Auslesen und die Dokumentationspflicht sind dabei bewusst als ein fester und wiederholbarer Ablauf gestaltet, damit jede Messung genau nachvollzogen werden kann.
+
+\textbf{Einmalige Einrichtung }Vor der ersten Messung wurde der West-Arbeitsbereich einmalig durch das offizielle Zephyr-Manifest in der Version v3.7.2 initialisiert. Dies wurde dabei durch das eigene Projektmanifest \lstinline[style=fileinline]|thesis/west.yml| erweitert (siehe 6.1).
+
+\begin{lstlisting}[style=basecode,language=BAsh]
+mkdir -p ~/zephyr-ws && cd ~/zephyr-ws
+python3 -m venv .venv
+source .venv/bin/activate
+pip install west
+west init --mr v3.7.2
+west update
+pip install -r zephyr/scripts/requirements.txt
+west zephyr-export
+west config manifest.path thesis
+west update
+\end{lstlisting}
+Anschließend wurden das Zephyr SDK 0.16.9 und die für das Flashen gebrauchten Werkzeuge, darunter J-Link und nRF Command Line Tools, installiert. Diese wurden zudem über einen Smoke-Test mit \lstinline[style=fileinline]|zephyr/samples/basic/blinky| verifiziert.
+
+\textbf{Beginn jeder Sitzung }Am Anfang jeder Mess-Sitzung wird in den Arbeitsbereich gewechselt, die Python-virtuelle Umgebung aktiviert und der aktuell ausgecheckte Commit-Hash des eigenen Projekts notiert.
+
+\begin{lstlisting}[style=basecode,language=BAsh]
+cd ~/zephyr-ws
+source .venv/bin/activate
+git -C thesis pull
+git -C thesis log --oneline -1
+\end{lstlisting}
+Dieser Commit-Hash wird dabei jeder in dieser Arbeit dokumentierten Messung zugeordnet, damit sich jede Messreihe genau auf den zum Messzeitpunkt verwendeten Software- und Konfigurationsstand zurückführen lässt (siehe Kapitel 4.3).
+
+\textbf{Baseline pro Konfigurationsstufe }Für jede der drei Konfigurationsstufen wird zuerst, noch vor den eigentlichen fünf Benchmarks, ein \lstinline[style=fileinline]|CONFIG_BENCH_NONE-Build| erzeugt. Dieser Build enthält keine \lstinline[style=fileinline]|bm_*.c|-Datei, aber weiterhin \lstinline[style=fileinline]|main.c|, \lstinline[style=fileinline]|benchlib|, Timing-Initialisierung, UART-/ printk-Ausgabe, Fließkommaformatierung und den konfigurierten 64-KiB-Systemheap. Er dient als gemeinsamer Mess-Harness zur Bestimmung des statischen Speicherbedarfs des jeweiligen Profils ohne benchmarkspezifischen Testcode. Da \lstinline[style=fileinline]|rom_report| und \lstinline[style=fileinline]|ram_report| nur die Linker-Map des gebauten ELF-Abbilds auswerten, ist für diesen Schritt kein Flashen und keine angeschlossene Hardware nötig.
+
+\begin{lstlisting}[style=basecode,language=BAsh]
+cd ~/zephyr-ws
+west build -p always -b nrf52840dk/nrf52840 thesis/apps/bench -- \
+  -DEXTRA_CONF_FILE=../../configs/minimal.conf -DCONFIG_BENCH_NONE=y
+west build -t rom_report | tail -40
+west build -t ram_report | tail -40
+\end{lstlisting}
+Für die Logging-Konfiguration wird dabei \lstinline[style=fileinline]|minimal.conf| zusammen mit dem Fragment \lstinline[style=fileinline]|logging.conf| übergeben. Für die IoT-Stack-Konfiguration wird dazu noch \lstinline[style=fileinline]|iot_stack.conf| und das Devicetree-Overlay \lstinline[style=fileinline]|iot_stack.overlay| für die OpenThread-Entropiequelle übergeben. Genau derselbe Baseline-Prozess wird also für alle drei Konfigurationsstufen gleich wiederholt. Nur das übergebene \lstinline[style=fileinline]|EXTRA_CONF_FILE| unterscheidet sich.
+
+\textbf{Ausführung der fünf Benchmarks }Nach der Baseline wird für dieselbe Konfigurationsstufe nacheinander jeder der fünf Benchmarks gebaut, geflasht und ausgelesen. Dies geschieht dabei jeweils durch das Setzen eines \lstinline[style=fileinline]|CONFIG_BENCH_*|-Symbols aus der \lstinline[style=fileinline]|choice|-Auswahl (siehe 4.1).
+
+\begin{lstlisting}[style=basecode,language=BAsh]
+west build -p always -b nrf52840dk/nrf52840 thesis/apps/bench -- \
+  -DEXTRA_CONF_FILE=../../configs/minimal.conf -DCONFIG_BENCH_CTX_SWITCH=y
+west flash
+\end{lstlisting}
+Dieser Doppelschritt aus Build und \lstinline[style=fileinline]|west flash| wird zudem für \lstinline[style=fileinline]|CONFIG_BENCH_IRQ_LATENCY|, \lstinline[style=fileinline]|CONFIG_BENCH_TIMER_JITTER|, \lstinline[style=fileinline]|CONFIG_BENCH_HEAP_ALLOC| und \lstinline[style=fileinline]|CONFIG_BENCH_HEAP_FRAG| wiederholt. Dazu wird vor der eigentlichen Messreihe einer Konfigurationsstufe einmalig CONFIG\_BENCH\_SELFTEST gebaut und geflasht, um die Kalibrierungsprüfung der Zeitmesskette zu verifizieren (siehe Kapitel 5). Für die Logging- und IoT-Stack-Konfiguration wird derselbe Prozess von sechs Bauvorgängen (Selbsttest und die fünf Benchmarks) mit dem jeweils passenden \lstinline[style=fileinline]|EXTRA_CONF_FILE|- bzw. extra \lstinline[style=fileinline]|EXTRA_DTC_OVERLAY_FILE|-Parameter wiederholt. Insgesamt besteht dies für jede der drei Konfigurationsstufen aus sieben Bauvorgängen: Die Baseline (\lstinline[style=fileinline]|BENCH_NONE|), den Selbsttest und die fünf Benchmarks.
+
+\textbf{Auslesen }Nach jedem Flashvorgang wird die Ausgabe über die serielle Schnittstelle des J-Link-Onboard-Debuggers ausgelesen.
+
+\begin{lstlisting}[style=basecode,language=BAsh]
+picocom -b 115200 /dev/ttyACM0
+\end{lstlisting}
+Nach dem Drücken der Reset-Taste am Board erscheint die Ausgabe der jeweils aktiven Firmware. Vor jeder Auswertung wird dabei kontrolliert, ob das Build-Log für jedes benutzte Konfigurationsfragment eine Zeile in der Form \lstinline[style=fileinline]|Merged configuration ‚…/<name>.conf‘| und \lstinline[style=fileinline]|Found toolchain: zephyr 0.16.9| enthält. Außerdem wird geprüft, ob bei der Minimal- und Logging-Konfiguration kein Boot-Banner beim Reset zu sehen ist. Ein Banner würde anzeigen, dass \lstinline[style=fileinline]|minimal.conf| nicht richtig angewendet wurde. Eine Beispiel-Ausgabe des Selbsttests sieht wie folgt aus:
+
+\begin{lstlisting}[style=basecode,language={}]
+BENCHMETA,zephyr=3.7.2,freq_hz=64000000,overhead_cycles=12,iterations=1000,warmup=10
+BENCH,selftest_busy_wait_100us,1000,6423,6435,6434.96,0.57
+BENCHEND
+\end{lstlisting}
+\textbf{Dokumentation }Für jede Messzelle des Versuchsplans werden zuletzt das Datum, der Commit-Hash, die benutzte Konfiguration inklusive des/ der \lstinline[style=fileinline]|EXTRA_CONF_FILE|-Fragments/-e, der aktive Benchmark, die komplette BENCHMETA-Kopfzeile, die dazugehörigen \lstinline[style=fileinline]|BENCH|-, \lstinline[style=fileinline]|HEAPSTATS|- bzw. \lstinline[style=fileinline]|HEAPPROBE|-Zeilen notiert. Außerdem wird bei Fußabdruck-Messungen die „Total“-Zeile von \lstinline[style=fileinline]|rom_report| und \lstinline[style=fileinline]|ram_report| dokumentiert. Dadurch kann bei jeder Kennzahl (siehe Kapitel 7) bis zur Rohausgabe der Hardware zurückverfolgt werden.

@@ -1,0 +1,452 @@
+% Automatisch aus der Word-/LaTeX-Konvertierung übernommen.
+\chapter{Implementierung}
+
+In Kapitel 4 wurde begründet, was gemessen wird und warum. Zudem wurden in Kapitel 5 die einzelnen benchmark-Metriken vorgestellt. Dieses Kapitel beschreibt die softwaretechnische Umsetzung dieser Untersuchung. Der Fokus liegt dabei auf der Erklärung, wie die einzelnen Bauteile des Projekts zusammenarbeiten und welche Entwurfsentscheidungen jeweils getroffen wurden. Zuerst wird die grobe Organisation des Projekts vorgestellt (siehe 6.1). Anschließend wird die von allen Benchmarks gemeinsam genutzte Mess-Infrastruktur erläutert (siehe 6.2). Zuletzt wird eine vollständige Darstellung der umgesetzten Konfigurationsstufen gebildet.
+
+\section{Projektstruktur}
+Der West-Arbeitsbereich trennt zwischen zwei Bereichen. Bei dem ersten Bereich handelt es sich um einen \lstinline[style=fileinline]|zephyr|-Ordner, der die externe Zephyr-RTOS-Quelle enthält und von West selbst verwaltet wird und dem eigenen Projektordner, welcher den Namen „thesis“ (\lstinline[style=fileinline]|thesis/|) trägt. Dieser enthält die gesamte, für diese Arbeit entwickelte Software und wird in diesem Kapitel beschrieben.
+
+Die Datei \lstinline[style=fileinline]|thesis/west.yml| wird Manifest genannt. Diese legt fest, welche exakte Zephyr-Version (v3.7.2) und welche zugehörigen Module, darunter Hardware-Abstraktionsschicht, Bootloader, Netzwerk-Stack, etc. beim nächsten west update in den \lstinline[style=fileinline]|zephyr|-Ordner geladen werden (siehe Kapitel 4.6.4). Dadurch ist die verwendete Software-Version nicht davon abhängig, welche Software-Version zufällig installiert wurde, sondern in einer einzigen, versionierten Datei festgelegt. Dies ist hierbei besonders für die Reproduzierbarkeit wichtig.
+
+Eine kleine Konfigurationsdatei, \lstinline[style=fileinline]|thesis/zephyr/module.yml|, teilt dem Zephyr-Build-System mit, dass \lstinline[style=fileinline]|benchlib| als sogenanntes Modul behandelt werden soll. Ohne diese Datei würde Zephyr die eigene Bibliothek beim Bauen nicht finden. Diese Datei zeigt zudem nur auf zwei Pfade; auf die CMake-Bauvorschrift und auf die Kconfig-Definition der Bibliothek.
+
+In Kapitel 6.2 wird im Detail die gemeinsame Mess-Infrastruktur erklärt. Diese ist unterteilt in:
+
+\begin{itemize}
+\item eine öffentliche Schnittstelle (siehe 6.2.2): \lstinline[style=fileinline]|include/benchlib.h|
+\item drei Implementierungsdateien (siehe 6.2.3 – 6.2.5): \lstinline[style=fileinline]|src/|
+\item eine CMake-Datei, welche festlegt, dass diese drei Dateien nur dann übersetzt werden, wenn eine Anwendung \lstinline[style=fileinline]|CONFIG_BENCHLIB=y| setzt. Dadurch bleibt die Bibliothek folgenlos für jeden Build, der sie nicht ausdrücklich anfordert: \lstinline[style=fileinline]|CMakeLists.txt|
+\item eine Konfigurationsdatei (siehe 6.2.6): \lstinline[style=fileinline]|Kconfig|
+\end{itemize}
+Die eigentliche Messanwendung ist zudem unterteilt in:
+
+\begin{itemize}
+\item eine gemeinsame Basis-Konfiguration (siehe 6.3.1): \lstinline[style=fileinline]|prj.conf|
+\item eine Konfigurationsdatei, welche die Auswahl (\lstinline[style=fileinline]|choice BENCH_TYPE|) zwischen den sieben Benchmark-Varianten (die fünf Metriken, der Selbsttest und die reine Baseline des Speicherbedarfs) definiert: \lstinline[style=fileinline]|Kconfig|
+\item eine CMake-Datei, welche abhängig von dieser Auswahl eine der sechs \lstinline[style=fileinline]|bm_*.c|-Dateien in die zu übersetzende Anwendung ein (siehe Kapitel 4.1): \lstinline[style=fileinline]|CMakeLists.txt|
+\item einem Einstiegspunkt, welcher die Messbibliothek initialisiert, die \lstinline[style=fileinline]|BENCHMETA|-Kopfzeile ausgibt und anschließend die zur Build-Zeit ausgewählte \lstinline[style=fileinline]|bench_run()|-Implementierung aufruft: \lstinline[style=fileinline]|src/main.c|
+\item je eine Implementierung pro Benchmark bzw. Referenzmessung (siehe 4.5): \lstinline[style=fileinline]|src/bm_*.c|
+\end{itemize}
+\section{Benchmark-Infrastruktur}
+Alle sechs ausführbaren Varianten benutzen die gemeinsame \lstinline[style=fileinline]|bench_run()|-Schnittstelle. Die DWT-basierten Benchmarks teilen Zeitmessung, Statistik und Ausgabe. Der Timer teilt Statistik und Ausgabe, benutzt jedoch eine andere Zeitquelle. Die Heap-Fragmentierung benutzt ein eigenes Zustandsformat. Die Bibliothek vereinheitlicht damit die jeweils gemeinsamen Teile.
+
+\subsection{Warum eine eigene Bibliothek?}
+Bevor der Code erklärt wird, wird die Begründung erläutert, warum diese Funktionen nicht einfach in jeder der sechs \lstinline[style=fileinline]|bm_*.c|-Dateien einzeln implementiert wurde. Es gibt dafür sowohl einen wissenschaftlichen als auch einen softwaretechnischen Grund.
+
+Der wissenschaftliche Grund ist dabei der wichtigere: Damit die fünf Benchmarks und die drei Konfigurationen überhaupt miteinander verglichen werden können, muss die Art und Weise, wie gemessen wird, für alle exakt identisch sein. Würde jede Benchmark-Datei ihre eigene kleine Zeitmess- und Statistiklogik besitzen, könnten kleine Unterschiede in dieser Logik selbst, wie z.B. eine andere Rundung, die eigentlich untersuchten Unterschiede zwischen den Konfigurationen verfälschen. Die gemeinsame Bibliothek verringert zudem Unterschiede im Messverfahren. Weitere Einflussgrößen wie z.B. Speicherlayout, Unterbrechungen und Hintergrundaktivität müssen dabei trotzdem beachtet werden.
+
+Der softwaretechnische Grund lautet: Ohne eine gemeinsame Bibliothek müsste derselbe code, also Kalibrierung, Statistik, Ausgabeformat, etc. sechsmal fast identisch geschrieben werden. Das kommt mit dem Risiko, dass ein späterer Fehler oder eine Korrektur nur in einer der sechs Kopien nachgezogen wird und die Dateien sich dadurch mit der Zeit voneinander unterscheiden.
+
+\subsection{Die öffentliche Schnittstelle}
+Die Datei benchlib.h legt fest, was die Bibliothek nach außen anbietet, ohne zu zeigen, wie es im Detail funktioniert. Durch diese Kapselung bleiben Einzelheiten der Implementierung, z.B. dass ein Hardware-Zähler namens DWT verwendet wird, in den .c-Dateien verborgen. Wer die Bibliothek nutzt, muss nur diese Header Datei verstehen.
+
+In dieser Header Datei wurde das Messprinzip festgelegt. Es wurde ein „Sandwich“-Muster angewendet. Jeder Benchmark misst nach demselben Schema.
+
+\begin{lstlisting}[style=basecode,language=C]
+struct bench_stats {
+    uint32_t n;      /* Anzahl Messwerte */
+    uint64_t min;    /* Minimum in Zyklen */
+    uint64_t max;    /* Maximum in Zyklen */
+    double mean;     /* laufender Mittelwert */
+    double m2;       /* Summe quadrierter Abweichungen (Welford) */
+};
+
+/* Einmalig vor allen Messungen aufrufen: startet den Zyklenzähler
+ *und bestimmt den Messoverhead. */
+void bench_timing_init(void);
+
+/* Overhead von zwei direkt aufeinanderfolgender Zähler-Reads (Zyklen).
+ * Vom Messergebnis abziehen. */
+uint64_t bench_overhead_cycles(void);
+
+/* Aktuellen Zählerstand lesen. */
+static inline timing_t bench_now(void)
+{
+    return timing_counter_get();
+}
+
+/* Zyklen zwischen zwei Zählerständen. */
+static inline uint64_t bench_elapsed(timing_t start, timing_t end)
+{
+    return timing_cycles_get(&start, &end);
+}
+\end{lstlisting}
+Der Zähler wird direkt vor und direkt nach diesem Vorgang ausgelesen und bildet anschließend die Differenz. Der zu messende Code befindet sich dabei dazwischen, daher die Bezeichnung „Sandwich“-Muster.
+
+Bei der Datenstruktur \lstinline[style=fileinline]|struct bench_stats| handelt es sich hierbei um die laufende Statistik für die Benchmarks. Es wurde dabei kein Feld (\emph{array}) implementiert, das alle 1000 Einzelmesswerte speichert, sondern fünf zusammenfassende Zahlen:
+
+\begin{itemize}
+\item Anzahl der bisherigen Messwerte: \lstinline[style=fileinline]|n|
+\item Bisher kleinster gemessener Wert: \lstinline[style=fileinline]|min|
+\item Bisher größter gemessener Wert: \lstinline[style=fileinline]|max|
+\item Laufender Mittelwert: \lstinline[style=fileinline]|mean|
+\item Zwischengröße für die Streuungsberechnung (siehe 6.2.4): \(M_2\)
+\end{itemize}
+\begin{lstlisting}[style=basecode,language=C]
+/* Laufende Statistik (Welford-Algorithmus: numerisch stabil,
+ * braucht keinen Array-Speicher für die Einzelwerte). */
+struct bench_stats {
+	uint32_t n;      /* Anzahl Messwerte */
+	uint64_t min;    /* Minimum in Zyklen */
+	uint64_t max;    /* Maximum in Zyklen */
+	double mean;     /* laufender Mittelwert */
+	double m2;       /* Summe quadrierter Abweichungen (Welford) */
+};
+\end{lstlisting}
+Diese Entscheidung wird in 6.2.4 genauer begründet.
+
+Die Funktionen \lstinline[style=fileinline]|bench_now()| und \lstinline[style=fileinline]|bench_elapsed()| sind im Header selbst als \lstinline[style=fileinline]|static inline| implementiert, nicht in einer .c-Datei. Das hat dabei einen messtechnischen Grund. Ein Funktionsaufruf kostet selbst schon einige CPU-Zyklen, unter anderem für das Anlegen eines Stack-Rahmens und den Rücksprung. Da hierbei teilweise nur einige Dutzend Zyklen gemessen werden, z.B. die Interrupt Latenz, würde ein normaler Funktionsaufruf für die Zeitmessung selbst schon einen störenden Anteil am Messergebnis ausmachen. Daher wurde \lstinline[style=fileinline]|static inline| verwendet. Die Kennzeichnung macht es dem Compiler möglich, den Funktionskörper direkt einzubetten. Ob dadurch kein Funktionsaufruf entsteht, muss am erzeugten Maschinencode bzw. Disassembly geprüft werden.
+
+Andere Funktionssignaturen, darunter \lstinline[style=fileinline]|bench_timing_init|, \lstinline[style=fileinline]|bench_overhead_cycles|, \lstinline[style=fileinline]|bench_stats_reset/ add/ stddev|, \lstinline[style=fileinline]|bench_report| und \lstinline[style=fileinline]|bench_run|, werden nur deklariert und nicht direkt implementiert. Sie existieren in den jeweiligen \lstinline[style=fileinline]|.c|-Dateien. Dabei nimmt \lstinline[style=fileinline]|bench_run()| eine Sonderrolle ein. Sie wird hier nur deklariert, aber nirgends in \lstinline[style=fileinline]|benchlib| selbst implementiert. Jede der sechs \lstinline[style=fileinline]|bm_*.c|-Dateien besitzt ihre eigene Version davon und \lstinline[style=fileinline]|main()| ruft sie nach der Initialisierung auf (siehe Kapitel 4.1, Kconfig-choice-Mechanismus).
+
+\subsection{Zeitbasis und Kalibrierung des Messaufwands}
+Die Datei \lstinline[style=fileinline]|bench_timing.c| kümmert sich um zwei Aufgaben: Die Zeitbasis in Betrieb nehmen und den eigenen Messfehler bestimmen.
+
+\textbf{Zeitbasis starten }Die Funktionen \lstinline[style=fileinline]|timing_init()| und \lstinline[style=fileinline]|timing_start()| sind Funktionen aus Zephyrs eingebauter Timing-Programmierschnittstelle. Auf der hier verwendeten Cortex-M4-Hardware aktivieren sie einen in den Prozessor eingebauten Hardware-Zähler namens DWT-Zyklenzähler. Dieser zählt bei jedem CPU-Takt eins hoch. Ein Auslesen dieses Zählers vor und nach einem Vorgang und die anschließende Differenzbildung ergibt dadurch die Anzahl der dafür benötigten CPU-Takte. Dabei entspricht ein Takt, bei einer 64 MHz Taktfrequenz, exakt 15,625 Nanosekunden.
+
+\[c_i = c_{i,\mathrm{roh}} - c_{\mathrm{Messaufwand}}\]
+\textbf{Kalibrierung des Messaufwands }Selbst das Auslesen des Zählers kostet eine kleine Anzahl an Zyklen. Würden diese nicht berücksichtigt werden, dann würde jede Messung um genau diesen kleinen Betrag zu groß ausfallen. Um diesen Fehler zu bestimmen, wird der Zähler zweimal direkt hintereinander ausgelesen, ohne dass dazwischen irgendein zu messender Vorgang stattfindet. Dabei ist die entstehende Differenz genau der Preis des Messens selbst.
+
+Dieser Vorgang wird 100-mal wiederholt und das Minimum aller 100 Ergebnisse wird als der eigentliche Kalibrierungswert übernommen, nicht der Durchschnitt. Das Minimum wird als Schätzung des kleinsten beobachteten Messaufwands benutzt, weil weitere Unterbrechungen einzelne Versuche normalerweise verlängern. Es ist jedoch kein Beweis für einen genau bestimmten wahren Messaufwand. Pipeline-, Prefetch- und Aufrufkontexte können sich zwischen Kalibrierung und Benchmark unterscheiden. Die Korrektur verringert dabei den systematischen Leseaufwand, entfernt aber nicht Messpunkt- und Layout-Effekte.
+
+\begin{lstlisting}[style=basecode,language=C]
+measured_overhead = UINT64_MAX;
+for (int i = 0; i < 100; i++) {
+    timing_t t0 = timing_counter_get();
+    timing_t t1 = timing_counter_get();
+    uint64_t c = timing_cycles_get(&t0, &t1);
+    if (c < measured_overhead) {
+        measured_overhead = c;
+    }
+}
+\end{lstlisting}
+\subsection{Laufende Statistik}
+Die Speicherung von 1000 Einzelwerten zu jeweils acht Byte würde 8000 Byte pro gleichzeitig gespeicherter Messreihe brauchen. Da die Benchmarks in getrennten Firmware-Aufbauten ausgeführt werden, summiert sich dieser Bedarf hierbei nicht über alle Konfigurationen hinweg. Die laufende Statistik umgeht trotzdem den zusätzlichen Messwertpuffer und hält den dafür benötigten Speicher dabei unabhängig von der Anzahl der Wiederholungen. Außerdem würde es dabei dem Grundgedanken widersprechen, eine für ressourcenbeschränkte Systeme möglichst sparsame Messmethode zu benutzen.
+
+Jedoch entsteht bei dieser Methodik ein Problem. Die Formel für die Varianz, also der Durchschnitt der quadrierten Abweichungen vom Mittelwert, setzt eigentlich voraus, dass der Mittelwert bekannt ist, bevor man die Abweichung berechnen kann. Bei einer laufenden Messung ändert sich dabei der Mittelwert mit jedem neuen Wert. Eine andere Methode, durch welche man fortlaufend die Summe aller Werte und die Summe aller quadrierten Werte mitzählt und die Varianz erst am Ende aus beiden Summen berechnet, hat ein numerisches Problem. Bei vielen, ähnlich großen Werten wird dabei die Differenz von zwei sehr großen, sehr ähnlichen Zahlen gebildet. Dadurch kann ein Großteil der eigentlich relevanten Nachkommastellen durch Rundungsfehler der Gleitkomma-Arithmetik verloren gehen. Dies wird auch „Auslöschung“ genannt. Dies ist ein reales Risiko bei den hier gemessenen Zyklenzahlen.
+
+Die bei dieser Untersuchung verwendete Lösung ist der Welfords Algorithmus. Der Kerngedanke ist hierbei, den Mittelwert und eine Hilfsgröße für die Streuung (hier \(M_2\) genannt) bei jedem einzelnen neuen Messwert direkt anzupassen, anstatt sie erst am Ende aus großen Summen zu berechnen. Es wird also berechnet, wie weit der neue Wert vom bisherigen Mittelwert entfernt liegt. Der Mittelwert wird dann um einen kleinen Bruchteil dieser Abweichung in seine Richtung verschoben. Wie groß dieser Bruchteil ist, hängt hierbei davon ab, wie viele Werte bereits eingeflossen sind. Bei wenigen Werten, zieht also ein neuer Wert den Mittelwert stärker als bei vielen Werten. Anschließend wird ein kleiner Korrekturbetrag zur Streuungsgröße hinzuaddiert. Das Verfahren umgeht hierbei die problematische Differenz von großen Rohmomentsummen. Rundungsfehler und Grenzen der benutzten Gleitkommadarstellung bleiben dabei dennoch bestehen. Dies passiert zudem bei konstantem, kleinem Speicherbedarf, da nur die fünf Felder aus \lstinline[style=fileinline]|struct bench_stats| unabhängig von \(N\) gespeichert werden.
+
+\[n_0 = 0, \qquad \bar{x}_0 = 0, \qquad M_{2,0} = 0\]
+\[\delta_n = x_n - \bar{x}_{n-1}\]
+\[\bar{x}_n = \bar{x}_{n-1} + \frac{\delta_n}{n}\]
+\[M_{2,n} = M_{2,n-1} + \delta_n \left(x_n - \bar{x}_n\right)\]
+\[M_{2,n} = M_{2,n-1} + \delta_n \left(x_n - \bar{x}_n\right)\]
+Die Benchmarks werden in getrennten Firmware-Images ausgeführt, sodass sich Messwertarrays von den verschiedenen Benchmarks oder Konfigurationen nicht gleichzeitig im RAM summieren würden. Welford umgeht dennoch ein weiteres 8-KiB-Array pro Messfirmware und hält den Speicherbedarf unabhängig von \(N\) konstant. Aus der fortlaufend berechneten Summe quadrierter Abweichungen (\(M_2\)) wird die Stichprobenvarianz durch Division durch \(n-1\) bestimmt. Die anschließend daraus gezogene Quadratwurzel ergibt die Stichprobenstandardabweichung. Die Benutzung von \(n-1\), auch Bessels Korrektur genannt, beachtet hierbei, dass der Mittelwert aus derselben Stichprobe geschätzt wurde. Bei unabhängigen, gleich verteilten Beobachtungen mit endlicher Varianz schätzt die so ausgerechnete Varianz die Populationsvarianz erwartungstreu. Diese Eigenschaft überträgt sich jedoch hierbei nicht allgemein auf ihre Quadratwurzel und damit auf die Standardabweichung (Weisstein, o. D., „Sample Variance“).
+
+\[s^2 = \frac{M_{2,n}}{n-1}\]
+\[s = \sqrt{\frac{M_{2,n}}{n-1}}\]
+Die Standardabweichung wird deshalb in dieser Arbeit vor allem als deskriptive Kennzahl der Streuung verwendet, die innerhalb eines Messlaufs beobachtet werden.
+
+
+\subsection{Ergebnisausgabe als CSV}
+\begin{lstlisting}[style=basecode,language=C]
+#include <zephyr/sys/printk.h>
+#include <benchlib.h>
+
+void bench_report(const char *name, const struct bench_stats *s)
+{
+	/* Alle Werte in CPU-Zyklen; Umrechnung in µs erfolgt am PC
+	 * (1 Zyklus = 15,625 ns @ 64 MHz, siehe BENCHMETA-Zeile). */
+	printk("BENCH,%s,%u,%llu,%llu,%.2f,%.2f\n",
+	       name,
+	       s->n,
+	       (unsigned long long)s->min,
+	       (unsigned long long)s->max,
+	       s->mean,
+	       bench_stats_stddev(s));
+}
+\end{lstlisting}
+Diese Datei gibt am Ende eines Benchmarks genau eine Textzeile pro Metrik aus, in einem einfachen, durch Kommas getrennten Format (CSV, Comma-Separated Values)
+
+BENCH, <Name>, <n>, <min>, …
+
+Dieses Format wurde aus zwei Gründen gewählt. Erstens ist es maschinenlesbar. Eine solche Zeile lässt sich später ohne manuellen Aufwand automatisiert in Tabellenprogramme oder Auswertungsskripte einlesen, ohne dass ein aufwändiger Parser für ein komplexeres Format geschrieben werden müsste. Zweitens bleibt es dabei trotzdem menschenlesbar. Während einer Messsitzung am seriellen Terminal lässt sich das Ergebnis direkt am Bildschirm ablesen, ohne ein weiteres Werkzeug zu benötigen. Ein methodisch wichtiger Kommentar direkt im Code zeigt zudem, dass die Ausgabefunktion erst nach Abschluss der Messschleife aufgerufen werden darf. Eine Textausgabe über die serielle Schnittstelle ist selbst ein langsamer Vorgang. Würde diese dabei innerhalb der gemessenen 1000 Iterationen aufgerufen werden, dann würde dieser große, für die Messung irrelevante Zeitaufwand in die Ergebnisse mit einfließen. Dadurch würden diese Messungen unbrauchbar gemacht werden. Bei allen ausgegebenen Werten handelt es sich um Rohwerte in CPU-Zyklen. Die Umrechnung in Mikro- bzw. Nanosekunden erfolgt dabei bewusst nicht mehr auf dem Mikrocontroller, sondern erst nachträglich bei der Auswertung am PC. Dabei wird die Taktfrequenz aus der \lstinline[style=fileinline]|BENCHMETA|-Kopfzeile verwendet (siehe Kapitel 4.6.1). Das hält die Firmware selbst einfach und verlagert die eigentliche Interpretation der Daten dorthin, wo sie stattfinden soll.
+
+\subsection{Parametrisierung über Kconfig}
+Die Bibliothek wird über ein eigenes Kconfig-Symbol, \lstinline[style=fileinline]|BENCHLIB|, aktiviert, das per \lstinline[style=fileinline]|select TIMING_FUNCTIONS| automatisch die Zephyr-interne Zeitmess-Funktionalität mit einschaltet. Dabei ist dies eine bewusste Entscheidung. Ohne den Zyklenzähler wäre keine der Messfunktionen dieser Bibliothek überhaupt nutzbar, weshalb diese Abhängigkeit unbedingt gestaltet wurde, anstatt optional. Zwei weitere Werte sind hierbei konfigurierbar und werden bei jedem Lauf in der \lstinline[style=fileinline]|BENCHMETA|-Kopfzeile mit ausgegeben, damit jede Messreihe aus den Rohdaten heraus nachvollziehbar bleibt:
+
+\lstinline[style=fileinline]|BENCHLIB_ITERATIONS|: Legt die Zahl der ausgewerteten Wiederholungen pro zeitbezogenem Benchmark fest. Der ausgewählte Wert von N=1000 liegt in derselben Größenordnung wie der Stichprobenumfang der Leistungs-Auswertung bei Silva et al. (2019, S. 10379).
+
+Für unabhängige Beobachtungen mit gleicher Verteilung kann der Standardfehler des Mittelwerts durch die Wurzel aus \(N\) schätzen. Bei \(N=1000\) entspricht dies hierbei ungefähr 3,16 Prozent der Stichprobenstandardabweichung. Diese Beziehung ist jedoch keine nachgewiesene Genauigkeitsangabe für die vorliegenden Messreihen. Aufeinanderfolgende Ausführungen können voneinander abhängen, bspw. durch gemeinsamen Systemzustand oder periodische Hintergrundaktivität (Weisstein, o. D., „Standard Error“).
+
+\lstinline[style=fileinline]|BENCHLIB_WARMUP|: Hierbei handelt es sich um Anzahl der vor der eigentlichen Messung verworfenen „Aufwärm“-Durchläufe. Die allersten Ausführungen eines Codepfads auf einem Mikrocontroller können durch Effekte wie einem Flash-Prefetch bzw. NVMC-Cache, Pipeline, Erstinitialisierung und Thread-Startpfade oder weitere Pipeline-Effekte künstlich langsamer ausfallen als alle folgenden, identischen Durchläufe. Diese ersten zehn Durchläufe werden daher bewusst durchgeführt, aber nicht in die Statistik aufgenommen.
+
+\section{Konfigurationen: Minimal / Logging / (IoT-Stack)}
+Alle drei Konfigurationen werden jeweils in einer eigenen \lstinline[style=fileinline]|.conf-Datei| implementiert, die dem Build zusammen mit der gemeinsamen Basis-Konfiguration der Mess-Anwendung übergeben wird. Bevor jedoch diese drei Konfigurationsstufen erklärt werden, wird zuerst die gemeinsame Basis erläutert, da sie in allen drei Stufen enthalten ist. Dadurch ist sie nicht selbst Teil der untersuchten Variation.
+
+\subsection{Gemeinsame Basis}
+\begin{lstlisting}[style=basecode,language=Kconfig]
+# --- Zwingend für die Messung ---
+# Messbibliothek; selektiert TIMING_FUNCTIONS (DWT-Zyklenzähler)
+CONFIG_BENCHLIB=y
+
+# --- Zwingend für die Ergebnisausgabe ---
+# Synchrone Minimal-Ausgabe (bewusst KEIN Log-Subsystem)
+CONFIG_PRINTK=y
+# UART-Treiber
+CONFIG_SERIAL=y
+# Konsolen-Subsystem
+CONFIG_CONSOLE=y
+# printk -> UART0 (VCOM des J-Link OB)
+CONFIG_UART_CONSOLE=y
+# %f in printk (mean/stddev); in allen Konfigurationen identisch
+# enthalten -> verzerrt den Konfigvergleich nicht
+CONFIG_CBPRINTF_FP_SUPPORT=y
+
+# --- Für die späteren Heap-Benchmarks ---
+# 64 KiB System-Heap für k_malloc/k_free
+CONFIG_HEAP_MEM_POOL_SIZE=65536
+\end{lstlisting}
+Diese Datei enthält nur das, was für jede Messung technisch zwingend benötigt wird. Dies gilt für jeden Benchmark und jede Konfiguration, die zum Zeitpunkt der Messung aktiv ist. Der gemeinsame Sockel hält hierbei die vorgesehenen Basisfunktionen konstant. Wechselwirkungen mit weiteren aktivierten Subsystemen sind dadurch nicht ausgeschlossen. Der gemeinsame Sockel hält diese Optionen konstant, entfernt aber keine Wechselwirkungen mit weiteren aktivierten Subsystemen oder Änderungen des Linkerlayouts. Diese Entscheidung ist dabei Teil des konstant gehaltenen Sockels.
+
+\lstinline[style=fileinline]|CONFIG_BENCHLIB=y|
+
+Dies aktiviert das eigenentwickelte Kconfig-Modul der Mess-Bibliothek (siehe 6.2). Dieses eine Flag löst intern durch eine Kconfig-select-Abhängigkeit automatisch \lstinline[style=fileinline]|CONFIG_TIMING_FUNCTIONS=|y aus. Dabei handelt es sich um den Zugriff auf Zephyrs Timing-API (Zyklenzähler der Hardware, siehe 6.2). Diese Flag erlaubt es, die Zeitmessfunktionen zu benutzen, welche in den Benchmarks verwendet werden.
+
+\lstinline[style=fileinline]|CONFIG_PRINTK=y, CONFIG_SERIAL=y, CONFIG_CONSOLE=y, CONFIG_UART_CONSOLE=y|
+
+Diese Optionen stellen die vorgesehene Konsolenausgabe der Messanwendung bereit. Über den virtuellen COM-Port vom Onboard-Debugger können die ausgegebenen Messdaten am Host-Rechner direkt empfangen werden. Die Benutzung derselben Ausgabefunktion und derselben Schnittstelle legt jedoch nicht alle internen Verarbeitungsschritte fest. Vor allem kann ein aktiviertes Logging-Subsystem \lstinline[style=fileinline]|printk()|-Nachrichten übernehmen. Ob dies im jeweiligen Messlauf passiert, ist anhand der zusammengeführten Build-Konfiguration zu prüfen. In der Logging-Stufe stellt \lstinline[style=fileinline]|CONFIG_LOG_PRINTK=n| sicher, dass \lstinline[style=fileinline]|printk()| nicht zum Logging-Frontend umgeleitet wird. (Zephyr Project, 2024, „Logging“, Abschnitt „Printk“).
+
+\lstinline[style=fileinline]|CONFIG_CBPRINTF_FP_SUPPORT=y|
+
+Zephyrs \lstinline[style=fileinline]|printk()| unterstützt in der Grundeinstellung aus Ressourcengründen keine Gleitkommazahlen (\lstinline[style=fileinline]|%f|), da die dafür benötigte Software-Gleitkomma-Formatierung Flash-Speicher kostet. Da die Mess-Statistik aber Mittelwert und Standardabweichung als Kommazahlen ausgibt, muss dieses Flag gesetzt sein. Dabei ist es wichtig zu erwähnen, dass dies in der Messmethodik in allen drei Konfigurationsstufen implementiert ist. Dadurch ist der verursachte Flash-Speicher Verbrauch in jeder Messung gleich hoch und verfälscht dadurch nicht den Vergleich. Dieser Verbrauch ist also Teil des konstanten Sockels und nicht der untersuchten Variablen.
+
+\lstinline[style=fileinline]|CONFIG_HEAP_MEM_POOL_SIZE=65536|
+
+Dies reserviert in jedem Benchmark-Profil einen 64-KiB-Systemheap. Dieser wird direkt vom Allokationsbenchmark benutzt, steht an sich aber auch anderen aktivierten Subsystemen zur Verfügung. Die Reservierung beeinflusst den statischen RAM-Report und wird deshalb als Teil des gemeinsamen Sockels ausgewiesen. Der Fragmentierungsbenchmark benutzt davon unabhängig einen eigenen 8-KiB-\lstinline[style=fileinline]|k_heap|.
+
+\subsection{Minimal-Konfiguration}
+\begin{lstlisting}[style=basecode,language=Kconfig]
+CONFIG_BOOT_BANNER=n
+CONFIG_TIMESLICING=n
+CONFIG_ASSERT=n
+CONFIG_LOG=n
+CONFIG_THREAD_NAME=n
+CONFIG_DEBUG_THREAD_INFO=n
+CONFIG_ARM_MPU=n
+CONFIG_HW_STACK_PROTECTION=n
+CONFIG_USE_SEGGER_RTT=n
+CONFIG_GPIO=n
+\end{lstlisting}
+Diese Konfiguration ist die erste und simpelste Untersuchungsstufe. Ziel dieser Konfiguration ist es, einen RTOS-Kern zu erhalten, der nur das enthält, was für die Mess-Anwendung unbedingt benötigt wird. Jedes Merkmal, das zusätzlich von Zephyr oder dem verwendeten Board standardmäßig aktiviert würde, wird hierbei bewusst deaktiviert. Dadurch kann die Minimalkonfiguration als Referenzstufe (Baseline) fungieren, um später die Logging- und IoT-Stufe mit ihr vergleichen zu können. Dabei ist zu beachten, dass nicht jedes Flag in dieser Datei einen von Zephyr aktivierten Standardwert deaktiviert. Ein Teil der Flags ist bereits die Zephyr-Voreinstellung und wird hierbei explizit dokumentiert, damit es nachvollziehbar ist, dass diese Entscheidungen bewusst getroffen sind. Andere Flags wiederum überschreiben einen abweichenden Standard- bzw. Board-Wert.
+
+\lstinline[style=fileinline]|CONFIG_BOOT_BANNER=n|
+
+Zephyr gibt beim Start standardmäßig eine Textzeile mit Versionsinformationen über die Konsole aus, den sogenannten \emph{Boot-Banner}. Diese Ausgabe kostet zusätzlichen Flash-Speicher sowohl für die Zeichenkette als auch für die Laufzeit beim Start. Für die Messungen ist diese Ausgabe unnötig. Durch das Deaktivieren entsteht dabei ein praktischer Nebeneffekt. Falls der Boot Banner trotz Deaktivierung ausgegeben wird, zeigt dies, dass dieses Konfigurationsfragment beim Build nicht angewendet wurde.
+
+\lstinline[style=fileinline]|CONFIG_TIMESLICING=n|
+
+Zephyrs Scheduler kann so konfiguriert werden, dass er gleichprioren Threads per Zeitscheiben-Rotation abwechselnd Rechenzeit zuteilt (Round-Robin), indem er einen laufenden Thread nach Ablauf eines Zeitfensters unterbricht, auch wenn dieser noch nicht freiwillig abgeben wollte. Für die Benchmarks ist dieses Verhalten jedoch unerwünscht, da eine solche unvorhersehbare Unterbrechung einen Störfaktor in der Zeitmessung darstellt, der nichts mit der untersuchten Metrik zu tun hat. Dadurch würden die einzelnen Messwerte durch sogenannte\emph{ Ausreißer} nach oben verfälscht werden. Diese Entscheidung folgt dabei derselben Vorgehensweise wie Zephyrs eigener Referenz-Benchmark (\lstinline[style=fileinline]|latency_measure|), der ebenfalls ohne Zeitscheiben-Rotation misst.
+
+\lstinline[style=fileinline]|CONFIG_ASSERT=n|
+
+Dies aktiviert bzw. deaktiviert die im Kernel eingebaute Laufzeitprüfung (Assertions), die im Falle eines Fehlers das System kontrolliert anhalten. Dieser Wert entspricht dabei bereits der Zephyr-Standardeinstellung für den hier verwendeten Build-Typ. Dies wird hierbei explizit gesetzt, um die bewusst getroffene Entscheidung zu dokumentieren, anstatt sich auf einen unsichtbaren Standardwert zu verlassen.
+
+\lstinline[style=fileinline]|CONFIG_LOG=n|
+
+Dies deaktiviert das Zephyr-Logging-Subsystem vollständig. Dieses Flag ist die entscheidende Kontrollvariable dieser Untersuchung. Es handelt sich hierbei um den einzigen inhaltlichen Unterschied zur Logging-Konfiguration (siehe 6.3.3). Die beobachteten Unterschiede werden hierbei zwischen zwei Profilen untersucht, die sich durch die Aktivierung des Logging-Subsystems unterscheiden. Ihre technische Ursache muss jedoch noch anhand von der aktiven Konfiguration und des erzeugten Programms beurteilt werden.
+
+\lstinline[style=fileinline]|CONFIG_THREAD_NAME=n|
+
+Dies deaktiviert die Speicherung eines lesbaren Namensstrings pro Thread (z.B. für Debugging-Zwecke). Jeder gespeicherte Name kostet extra RAM-Platz pro angelegten Thread. Diese Flag ist deaktiviert, da dies für die Messungen nicht benötigt wird.
+
+\lstinline[style=fileinline]|CONFIG_DEBUG_THREAD_INFO=n|
+
+Dies deaktiviert zusätzliche, für Debugger bestimmte Metadaten über die im System laufenden Threads (z.B. für die Anzeige im Eclipse-/ GDB-Thread-Debugging). Auch dieses Merkmal dient der Entwicklungsunterstützung und wird für das Ausführen der Mess-Anwendung nicht benötigt.
+
+\lstinline[style=fileinline]|CONFIG_ARM_MPU=n & CONFIG_HW_STACK_PROTECTION=n|
+
+Diese Flags deaktivieren den MPU-basierten Schutz in allen drei Benchmark-Profilen. Bei aktivem Stack-Guard können auch Supervisor-Threads MPU-Regionen brauchen. Userspace-Memory-Domains sorgen für weitere MPU-Konfiguration. Da keine dieser Varianten gemessen wurde, lässt sich der vermiedene Kontextwechselaufwand nicht quantifizieren. Die Messergebnisse gelten daher für die ausgewählte Konfiguration ohne MPU-basierten Stackschutz.
+
+\lstinline[style=fileinline]|CONFIG_USE_SEGGER_RTT=n|
+
+Dieses Flag wurde durch eine Untersuchung während der Einrichtung gesetzt. Dabei wurde ein Speicherbericht (\lstinline[style=fileinline]|ram_report|) erstellt, welcher zeigte, dass der Treiber für das SEGGER-RTT-Protokoll ungefragt in das Firmware-Abbild eingebunden wurde, obwohl die Ausgabe der Mess-Anwendung nur über UART erfolgt. Bei diesem Protokoll handelt es sich um einen alternativen, im Debugger integrierten Ausgabekanal. Dies liegt daran, dass es sich um einen Board-Standardwert des verwendeten nRF52840-DK-Boards handelt, keinen allgemeinen Zephyr-Standardwert. Er wurde daher explizit deaktiviert, nachdem sein ungenutzter Speicherverbrauch (ca. 2,2 KiB Flash und RAM für einen internen Puffer) im Speicherbericht angezeigt wurde.
+
+\lstinline[style=fileinline]|CONFIG_GPIO=n|
+
+Dieses Flag wurde ebenfalls gesetzt, nachdem ein Board-Standardwert entdeckt wurde. Der GPIO-Treiber (allgemeine digitale Ein-/ Ausgabepins) wurde vom Board-Definitionsdatensatz standardmäßig aktiviert, obwohl die Mess-Anwendung keine GPIO-Funktionalität verwendet. Es wird nur die serielle Schnittstelle, die über eine eigene, unabhängige Pin-Konfiguration verfügt, verwendet. Auch dies wurde durch derselben \lstinline[style=fileinline]|ram_report|-Prüfung herausgefunden.
+
+\subsection{Logging-Konfiguration}
+\begin{lstlisting}[style=basecode,language=Kconfig]
+CONFIG_LOG=y
+CONFIG_LOG_PRINTK=n
+CONFIG_LOG_MODE_DEFERRED=y
+CONFIG_LOG_BUFFER_SIZE=1024
+CONFIG_LOG_DEFAULT_LEVEL=3
+CONFIG_LOG_BACKEND_UART=y
+CONFIG_LOG_FUNC_NAME_PREFIX_DBG=n
+\end{lstlisting}
+Diese Konfiguration entspricht exakt der Minimal-Konfiguration mit genau einer großen Änderung: \lstinline[style=fileinline]|CONFIG_LOG| wird von \lstinline[style=fileinline]|n| auf \lstinline[style=fileinline]|y| gesetzt, wodurch das Zephyr-Logging-Subsystem aktiviert wird. Wichtig für die Reproduzierbarkeit ist hierbei, dass die Datei \lstinline[style=fileinline]|logging.conf| nicht die Einstellungen aus \lstinline[style=fileinline]|minimal.conf| als Text enthält, sondern nur das inhaltliche Delta ist. Damit diese Konfigurationsstufe aus der Minimal- und Logging-Konfiguration besteht, müssen beim Bauen beide Dateien gemeinsam übergeben werden. Dies erfolgt durch den Befehl:
+
+\lstinline[style=fileinline]|-DEXTRA_CONF_FILE=“minimal.conf;logging.conf”| (siehe Kapitel 4.7)
+
+Nur so bleiben auch in dieser Konfigurationsstufe die, in der Minimal-Konfiguration, deaktivierten Merkmale weiterhin deaktiviert. Der einzige inhaltliche Unterschied wird somit auf das Logging-Merkmal beschränkt.
+
+\lstinline[style=fileinline]|CONFIG_LOG=y|
+
+Aktiviert das Logging-Subsystem als Ganzes. Dies ist die eigentliche unabhängige Variable dieser Konfigurationsstufe.
+
+\lstinline[style=fileinline]|CONFIG_LOG_MODE_DEFERRED=y|
+
+Zephyrs Logging-Subsystem kennt hierbei zwei Betriebsarten. Im \emph{Immediate}-Modus würde jeder einzelne Log-Aufruf sofort oder synchron die komplette Textformatierung durchführen und über die serielle Schnittstelle ausgeben, bevor der aufrufende Code fortgesetzt wird. Für die Untersuchung wurde jedoch die zweite Betriebsart, der \emph{Deferred}-Modus, verwendet. Hierbei schreibt ein Log-Aufruf stattdessen nur die Rohdaten (Nachricht und Argumente) in einen Ringpuffer. Ein separater, niedriger priorisierter Log-Thread entnimmt dann diese Einträge asynchron im Hintergrund. Diese werden dann erst dort in Text umformatiert und anschließend ausgegeben. Diese Entscheidung wurde bewusst getroffen. Der Immediate-Modus würde direkt im gemessenen Codepfad selbst unvorhersehbar lange, synchrone UART-Schreibvorgänge auslösen und dadurch die Zeitmetriken, die untersucht werden, verfälschen. Der Deferred-Modus entspricht dem in der Praxis üblichen Einsatzszenario von Logging in eingebetteten Systemen und ist Zephyrs Standardeinstellung.
+
+\lstinline[style=fileinline]|CONFIG_LOG_BUFFER_SIZE=1024|
+
+Dies legt die Größe des eben genannten Ringpuffers auf 1024 Byte fest. Dabei handelt es sich um einen Zephyr-Standardwert, welcher übernommen wurde. Dieser Speicherbereich existiert nur in der Logging-Konfiguration und ist damit ein direkt messbarer RAM-Mehrverbrauch, welcher sich der Logging-Funktion zuordnen lässt.
+
+\lstinline[style=fileinline]|CONFIG_LOG_DEFAULT_LEVEL=3|
+
+Dies legt für Module ohne eigene Festlegung das Informationsniveau als Standardfilter fest. Daraus ergibt sich dann jedoch keine bestimmte Anzahl von Log-Nachrichten. Die echte Logging-Last hängt zudem davon ab, welche Log-Aufrufe ausgeführt werden, wie häufig sie auftreten und welche Inhalte sie verarbeiten.  (Zephyr Project, 2024, „Logging“, Abschnitt „Global Kconfig Options“).
+
+\lstinline[style=fileinline]|CONFIG_LOG_BACKEND_UART=y|
+
+Dies legt fest, über welchen physischen Ausgabekanal der Log-Thread seine formatierten Nachrichten ausgibt. Hierbei wird derselbe UART-Kanal verwendet, über den auch die printk()-Ergebniszeilen der Benchmarks laufen. Diese Wahl stellt sicher, dass keine, in der Minimal-Konfiguration nicht vorhandene Hardware-Schnittstelle (z.B SEGGER-RTT) für das Logging aktiviert wird.
+
+\lstinline[style=fileinline]|CONFIG_LOG_FUNC_NAME_PREFIX_DBG=n|
+
+Dieses Flag deaktiviert die automatische Voranstellung des Funktionsnamens vor jede Debug-Log-Nachricht. Dieses Merkmal betrifft nur die Textformatierung der Ausgabe und keine der Benchmark-relevanten Zeitmetriken. Es wurde daher deaktiviert, um den daraus entstehenden Flash-Speicherverbrauch zu vermeiden.
+
+\subsection{IoT-Stack-Konfiguration}
+\begin{lstlisting}[style=basecode,language=Kconfig]
+CONFIG_NETWORKING=y
+CONFIG_NET_SOCKETS=y
+CONFIG_NET_SOCKETS_POSIX_NAMES=y
+CONFIG_NET_IPV6=y
+CONFIG_NET_UDP=y
+CONFIG_NET_TCP=n
+CONFIG_NET_L2_OPENTHREAD=y
+CONFIG_OPENTHREAD_MTD=y
+CONFIG_OPENTHREAD_MANUAL_START=y
+CONFIG_COAP=y
+CONFIG_NET_SOCKETS_SOCKOPT_TLS=y
+CONFIG_NET_SOCKETS_ENABLE_DTLS=y
+CONFIG_MBEDTLS=y
+CONFIG_MBEDTLS_TLS_VERSION_1_2=y
+CONFIG_MBEDTLS_ENABLE_HEAP=y
+CONFIG_MBEDTLS_HEAP_SIZE=16384
+CONFIG_MBEDTLS_KEY_EXCHANGE_PSK_ENABLED=y
+CONFIG_MBEDTLS_PSK_MAX_LEN=32
+\end{lstlisting}
+Die Benchmark-Stufe kombiniert \lstinline[style=fileinline]|minimal.conf| mit \lstinline[style=fileinline]|iot_stack.conf| und \lstinline[style=fileinline]|iot_stack.overlay|. Aktiviert werden Networking, IPv6, UDP, OpenThread MTD, CoAP und DTLS/ PSK über mbedTLS.
+
+\lstinline[style=fileinline]|CONFIG_NETWORKING=y|
+
+Diese Option aktiviert Zephyrs allgemeine Netzwerkunterstützung. Sie bildet die Grundlage für Link-Layer, Netzwerkpuffer und höhere Protokolle wie IPv6. Die Option aktiviert allein noch keine bestimmte Netzwerkkommunikation, stellt aber die gemeinsamen Strukturen bereit, auf denen die nachfolgenden Netzwerkoptionen aufbauen.
+
+\lstinline[style=fileinline]|CONFIG_NET_SOCKETS=y|
+
+Diese Option aktiviert Zephyrs BSD-Socket-Schnittstelle. Anwendungen können dadurch Netzwerkkommunikation über Funktionen wie \lstinline[style=fileinline]|socket()|, \lstinline[style=fileinline]|bind()|, \lstinline[style=fileinline]|recvfrom()| und \lstinline[style=fileinline]|sendto()| umsetzen. Die Socket-Architektur wird bei der Implementierung des CoAP-Servers in Kapitel 6.4.2 benutzt. Die allgemeine Rolle der Socket-Schnittstelle wird deshalb hier nicht nochmal erläutert (Zephyr Project, 2024, „BSD Sockets“, Abschnitt „Overview“).
+
+\lstinline[style=fileinline]|CONFIG_NET_SOCKETS_POSIX_NAMES=y|
+
+Zephyr versieht seine Socket-Funktionen standardmäßig mit dem Präfix \lstinline[style=fileinline]|zsock_|, um Namenskonflikte zu umgehen. Diese Option stellt zudem die bekannten POSIX-Namen wie \lstinline[style=fileinline]|socket()|, \lstinline[style=fileinline]|bind()|, \lstinline[style=fileinline]|recvfrom()| und \lstinline[style=fileinline]|sendto()| bereit, ohne dafür die komplette POSIX-Unterstützung zu aktivieren.
+
+Die Option ist in Zephyr v3.7.2 schon als veraltet gekennzeichnet und wird aufgrund der regulären POSIX-Socket-API nur noch aus Kompatibilitätsgründen angeboten. Sie wird hier benutzt, weil der vorhandene Anwendungscode diese Funktionsnamen benutzt (Zephyr Project, 2024, „BSD Sockets“; Zephyr Project, o. D., Kconfig NET\_SOCKETS\_POSIX\_NAMES, Tag v3.7.2).
+
+\lstinline[style=fileinline]|CONFIG_NET_IPV6=y|
+
+Diese Option aktiviert den IPv6-Teil vom Zephyr-Netzwerkstack. IPv6 ist für das benutzte Thread-Netz erforderlich, da Thread als IPv6-basiertes Mesh-Protokoll arbeitet. Die Verbindung zwischen Thread, IPv6, 6LoWPAN und IEEE 802.15.4 wurde bereits in Kapitel 2.7.3 beschrieben.
+
+\lstinline[style=fileinline]|CONFIG_NET_UDP=y|
+
+Diese Option aktiviert UDP als verbindungsloses Transportprotokoll. CoAP benutzt UDP. Auch die DTLS-Absicherung arbeitet in dieser Konfiguration auf Datagrammen. Die Protokollbeziehung zwischen CoAP, UDP und DTLS wurde bereits in Kapitel 2.7.1 und 2.7.2 erläutert.
+
+\lstinline[style=fileinline]|CONFIG_NET_TCP=n|
+
+TCP wird deaktiviert, da die Benchmark-Konfiguration keine TCP-Anwendung und kein TLS über einen TCP-Datenstrom benutzt. CoAP und DTLS arbeiten hier auf UDP. Die Deaktivierung verhindert, dass nicht gebrauchte TCP-Funktionen in das Firmware-Abbild aufgenommen werden.
+
+\lstinline[style=fileinline]|CONFIG_NET_L2_OPENTHREAD=y|
+
+Diese Option bindet OpenThread als Layer-2-Implementierung in Zephyrs Netzwerkstack ein. Zephyr verbindet dabei den externen OpenThread-Stack mit seiner IEEE-802.15.4-Treiberschnittstelle. Die allgemeinen Eigenschaften des Thread-Protokolls wurden bereits in Kapitel 2.7.3 erklärt.
+
+Die Aktivierung zieht weitere Abhängigkeiten nach sich. Dazu gehören unter anderem die IEEE-802.15.4-Unterstützung, OpenThread selbst, C++-Laufzeitanteile und eine Entropiequelle. Der Speicherbedarf der IoT-Stufe ist daher nicht nur den 18 sichtbaren Zeilen des Konfigurationsfragments zuzuordnen, sondern beinhaltet auch die von Kconfig aufgelösten Abhängigkeiten (Zephyr Project, 2023, „Thread protocol“; Zephyr Project, o. D., Kconfig NET\_L2\_OPENTHREAD, Tag v3.7.2).
+
+\lstinline[style=fileinline]|CONFIG_OPENTHREAD_MTD=y|
+
+Diese Option wählt die Gerätekategorie Minimal Thread Device (MTD). Ein MTD beteiligt sich nicht als Router an der Weiterleitung fremder Pakete. Dadurch ist der Funktionsumfang niedriger als bei einem Full Thread Device. Diese Auswahl entspricht dem ressourcenbeschränkten Endgerät, das durch die IoT-Sensoranwendung dargestellt werden soll.
+
+\lstinline[style=fileinline]|CONFIG_OPENTHREAD_MANUAL_START=y|
+
+Diese Option verhindert, dass OpenThread während der Initialisierung automatisch versucht, einem vorhandenen Thread-Netzwerk beizutreten. Das Stack müsste stattdessen über seine API oder eine passende Kommandozeilenschnittstelle gestartet werden.
+
+Für die Benchmark-Anwendung erfolgt ein solcher Start nicht. Dadurch werden keine fortlaufenden Beitrittsversuche ohne vorhandenen Thread-Koordinator erzeugt. Die Messung beinhaltet somit die eingebundene OpenThread-Software und ihre statischen Ressourcen, aber keinen aktiven Netzwerkbeitritt oder Mesh-Verkehr.
+
+Dieser Punkt unterscheidet die Benchmark-Konfiguration von \lstinline[style=fileinline]|iot_sensor|. Dort ist \lstinline[style=fileinline]|CONFIG_OPENTHREAD_MANUAL_START=n| gesetzt, weil die Demonstrationsanwendung am Netzwerkbetrieb teilnehmen soll (Zephyr Project, o. D., Kconfig OPENTHREAD\_MANUAL\_START, Tag v3.7.2).
+
+\lstinline[style=fileinline]|CONFIG_COAP=y|
+
+Diese Option bindet Zephyrs CoAP-Bibliothek ein. Sie stellt Funktionen zum Erzeugen und Parsen von CoAP-Paketen und zur Verarbeitung von Ressourcen und Optionen bereit. Die Bibliothek erstellt selbst keine Sockets. Die Anwendung stellt den Kommunikationskanal über die Socket-API bereit und übergibt dabei die empfangenen Puffer zur Verarbeitung an die CoAP-Bibliothek.
+
+Das Protokoll selbst wurde bereits in Kapitel 2.7.1 erläutert. Die bestimmte Verwendung für die Ressource \lstinline[style=fileinline]|/sensor| wird in Kapitel 6.4.2 beschrieben (Zephyr Project, 2023, „CoAP“, Abschnitt „Overview“).
+
+In der Benchmark-Anwendung wird keine CoAP-Ressource aufgerufen. Die Option dient dort dazu, die Bibliothek als Teil des IoT-Softwareprofils in den Build einzubeziehen.
+
+\lstinline[style=fileinline]|CONFIG_NET_SOCKETS_SOCKOPT_TLS=y|
+
+Diese Option erweitert die Socket-Schnittstelle um TLS-/ DTLS-spezifische Protokolltypen und Socket-Optionen. Dazu gehören bspw. \lstinline[style=fileinline]|TLS_SEC_TAG_LIST| zur Auswahl von registrierten Zugangsdaten und \lstinline[style=fileinline]|TLS_DTLS_ROLE| zur Festlegung der Client- oder Serverrolle.
+
+Die allgemeine DTLS-/ PSK-Funktionsweise wurde schon in Kapitel 2.7.2 erläutert. Die bestimmte Registrierung eines PSK und seiner Identität über \lstinline[style=fileinline]|tls_credential_add()| und deren Zuordnung zum Socket wird in Kapitel 6.4.2 beschrieben (Zephyr Project, 2024, „BSD Sockets“, Abschnitt „Secure Sockets“).
+
+\lstinline[style=fileinline]|CONFIG_NET_SOCKETS_ENABLE_DTLS=y|
+
+Diese Option erweitert die sichere Socket-Schnittstelle um DTLS-Unterstützung. Ohne sie wäre über \lstinline[style=fileinline]|CONFIG_NET_SOCKETS_SOCKOPT_TLS| standardmäßig nur TLS auf einem TCP-Datenstrom verfügbar. Die Option wählt dabei für Zephyrs nativen Netzwerkstack gleichzeitig die gebrauchte DTLS-Unterstützung in mbedTLS aus.
+
+Obwohl die Funktion in das Benchmark-Firmware-Abbild eingebunden ist, erzeugt \lstinline[style=fileinline]|bench| keinen DTLS-Socket und führt keinen Handshake aus. Gemessen wird daher nicht die Laufzeit einer DTLS-Verbindung, sondern der Einfluss des eingebundenen Softwareprofils.
+
+\lstinline[style=fileinline]|CONFIG_MBEDTLS=y|
+
+Diese Option bindet die mbedTLS-Kryptografiebibliothek ein. Zephyrs native TLS-/ DTLS-Sockets benutzen deren kryptografische und protokollspezifische Funktionen. mbedTLS wird außerdem von OpenThread für verschiedene Sicherheitsfunktionen benutzt.
+
+\lstinline[style=fileinline]|CONFIG_MBEDTLS_TLS_VERSION_1_2=y|
+
+Diese Option aktiviert die Protokollunterstützung für TLS 1.2 in mbedTLS. In der hier benutzten Zephyr-Version gehört diese Einstellung zu den Voraussetzungen für die aktivierte DTLS-Unterstützung. Die Benennung bezieht sich dabei auf die gemeinsame TLS-1.2-Protokollbasis. Im Socket wird dann anschließend DTLS 1.2 verwendet.
+
+\lstinline[style=fileinline]|CONFIG_MBEDTLS_ENABLE_HEAP=y|
+
+Diese Option erlaubt mbedTLS die Verwendung eines eigenen globalen Speicherbereichs für dynamische Anforderungen. Der mbedTLS-Heap soll dabei von dem über \lstinline[style=fileinline]|CONFIG_HEAP_MEM_POOL_SIZE| bereitgestellten Zephyr-Systemheap unterschieden werden. Zephyr initialisiert diesen Speicherbereich beim Systemstart automatisch, solange die reguläre mbedTLS-Initialisierung aktiv ist (Zephyr Project, o. D., Kconfig MBEDTLS\_ENABLE\_HEAP, Tag v3.7.2).
+
+\lstinline[style=fileinline]|CONFIG_MBEDTLS_HEAP_SIZE=16384|
+
+Diese Option legt die Größe des mbedTLS-Heaps auf 16.384 Byte bzw. 16 KiB fest. Dieser reservierte Speicherbereich ist ein Teil des RAM-Bedarfs der IoT-Konfiguration.
+
+Die Größe ist eine bewusste Konfigurationsentscheidung für diese Untersuchung. Sie ist kein allgemeiner mbedTLS-Standardwert. Der gebrauchte Speicher hängt von den benutzten Protokollen, Puffergrößen, Cipher Suites und gleichzeitig aktiven Verbindungen ab (Zephyr Project, o. D., Kconfig MBEDTLS\_HEAP\_SIZE, Tag v3.7.2).
+
+\lstinline[style=fileinline]|CONFIG_MBEDTLS_KEY_EXCHANGE_PSK_ENABLED=y|
+
+Diese Option aktiviert PSK-basierte Schlüsselaustauschverfahren in mbedTLS. Dadurch kann die in Kapitel 2.7.2 beschriebene Absicherung mit einem vorher ausgesuchten gemeinsamen Schlüssel benutzt werden.
+
+Die Option stellt nur die gebrauchte kryptografische Funktionalität bereit. In \lstinline[style=fileinline]|bench| werden keine Zugangsdaten registriert und kein Handshake ausgeführt. Die Verwendung eines PSK erfolgt erst in \lstinline[style=fileinline]|iot_sensor|, wie in Kapitel 6.4.2 beschrieben.
+
+\lstinline[style=fileinline]|CONFIG_MBEDTLS_PSK_MAX_LEN=32|
+
+Diese Option begrenzt die maximale Länge eines Pre-Shared Keys auf 32 Byte. Sie definiert damit eine Kapazitätsgrenze für PSK-basierte Verbindungen, erzeugt aber selbst keinen Schlüssel.
+
+Der in der Demonstrationsanwendung benutzte PSK muss innerhalb dieser Grenze liegen. \lstinline[style=fileinline]|MBEDTLS_PSK_MAX_LEN| ist der Symbolname für die benutzte Zephyr-/ mbedTLS-Version.
+
+\textbf{Devicetree-Overlay für die Entropiequelle}
+
+Zum \lstinline[style=fileinline]|iot_stack.conf| wird zudem \lstinline[style=fileinline]|iot_stack.overlay| eingebunden:
+
+\begin{lstlisting}[style=basecode,language=DTS]
+/ {
+    chosen {
+        zephyr,entropy = &rng;
+    };
+};
+\end{lstlisting}
+Das Overlay weist Zephyr den Hardware-Zufallszahlengenerator rng als Entropiequelle zu. OpenThread und die kryptografischen Funktionen brauchen dabei Zufallswerte, bspw. für Protokoll- und Sicherheitsoperationen. Die Entropiequelle wird daher über Devicetree festgelegt, weil sie eine Zuordnung zu einem bestimmten Hardwaregerät beschreibt. Sie ist deshalb nicht als weitere \lstinline[style=fileinline]|CONFIG_|-Option in \lstinline[style=fileinline]|iot_stack.conf| enthalten.
+
+Das Overlay wird nur für die IoT-Stack-Konfiguration übergeben. Minimal- und Logging-Konfiguration werde dadurch nicht von dieser Hardwarezuordnung beeinflusst.
+
+\section{Realistische Anwendung}
+Für diese Arbeit wurde der Quellcode von einer praxisnahen Demonstrationsanwendung entwickelt. Nach einem erfolgreichem Build, Flash- und Ende-zu-Ende-Test soll sie einen über DTLS geschützten CoAP-Sensordienst und einen Firmware-Update-Pfad demonstrieren.
+
+\subsection{Zweck und Sensor-Simulation}
+Für diese Arbeit wurde kein externer Sensor an das nRF52840 DK angeschlossen, um die Reproduzierbarkeit nicht von weiterer, nicht mitgelieferter Hardware zu beeinflussen. Daher wird der interne Die-Temperatursensor des nRF52840 DK ausgelesen. Dieser liefert die aktuelle Chiptemperatur, die dann anschließend über den CoAP-Server zur Verfügung gestellt wird. Die für OpenThread gebrauchte Entropiequelle wird dabei über ein board-spezifisches Devicetree-Overlay umgestellt. Dies erfolgt nach demselben Prinzip wie bei der in 6.3.4 beschriebenen IoT-Stack-Konfigurationsstufe.
+
+\subsection{CoAP-Server über DTLS/ PSK}
+Die Datei \lstinline[style=fileinline]|coap_server.c| implementiert hierbei einen CoAP-Server, der über Zephyrs BSD-Socket-Schnittstelle und die in Zephyr enthaltene CoAP-Paketbibliothek genau eine Ressource zur Verfügung stellt. Dabei handelt es sich um eine GET-Anfrage auf dem Pfad \lstinline[style=fileinline]|/sensor|, welche den aktuellen Temperaturwert als Textnutzlast zurückliefert. Die Absicherung des Servers folgt dabei genau dem in Abschnitt 2.7.2 erwähntem Verfahren. Anstatt dass ein UDP-Socket benutzt wird, wird beim Anlegen des Sockets das Protokoll \lstinline[style=fileinline]|IPPROTO_DTLS_1_2| angegeben, sodass sich der Socket nach außen wie ein normaler Datagramm-Socket benutzen lässt (\lstinline[style=fileinline]|bind()|, \lstinline[style=fileinline]|recvfrom()|, \lstinline[style=fileinline]|sendto()|). Der TLS-Handshake erfolgt jedoch intern über mbedTLS. Bevor dieser Socket jedoch angelegt wird, wird ein Pre-Shared Key und eine dazugehörige PSK-Identität über die Funktion \lstinline[style=fileinline]|tls_credential_add()| im TLS-Credential-Subsystem registriert. Anschließend wird es dem Socket dann über \lstinline[style=fileinline]|setsockopt()| mit dem Optionsnamen \lstinline[style=fileinline]|TLS_SEC_TAG_LIST| zugewiesen. Darüber hinaus wird der Socket über die Option \lstinline[style=fileinline]|TLS_DTLS_ROLE| als Server konfiguriert. Der dabei benutzte Pre-Shared Key ist hierbei ein fest hinterlegter Demo-Schlüssel im Quellcode, da es sich hierbei nur um Testzwecke handelt. In einer echten Anwendung würde ein solcher Schlüssel bei einer Geräteinbetriebnahme (Provisioning) individuell erzeugt werden.
+
+\subsection{Firmware-Update über Sysbuild, MCUboot und MCUmgr}
+Damit diese Anwendung, wie in Abschnitt 2.7.4 beschrieben, auch Firmware-Updates unterstützt, wird sie über das Sysbuild-System gebaut. Dieses erzeugt aus dem eigentlichen Anwendungscode und einem weiteren MCUboot-Bootloader-Image ein gemeinsames Firmware-Abbild. Das Anwendungs-Image selbst wird hierbei dafür passend für die Flash-Partitionen gebaut und signiert, die von MCUboot verwaltet werden. Auf der Anwendungsseite wird zudem das MCUmgr-Management-Subsystem eingebunden, darunter die Bildverwaltungs- und die Betriebssystem-Kommandogruppe. Darüber kann ein neues Firmware-Abbild empfangen und anschließend ein Neustart ausgelöst werden. Für dieses Management-Protokoll wird hierbei als Übertragungsweg UDP benutzt. Dadurch kann ein Firmware-Update über denselben Thread-Netzwerkpfad übertragen werden, über den auch der CoAP-Sensordienst erreichbar ist.

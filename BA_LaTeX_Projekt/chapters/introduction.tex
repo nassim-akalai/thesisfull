@@ -1,0 +1,78 @@
+% Automatisch aus der Word-/LaTeX-Konvertierung übernommen.
+\chapter{Einleitung}
+
+Das Internet der Dinge (Internet of Things, IoT) beschreibt die zunehmende Vernetzung von Alltagsgeräten und industriellen Sensoren zu einer gemeinsamen Kommunikations-Infrastruktur, in welcher Menschen, Geräte und Prozesse jederzeit Daten untereinander austauschen können. Viele dieser Geräte befinden sich hierbei jedoch nicht im Kern von leistungsstarken Rechenzentren, sondern am äußersten Rand des Netzwerks. Sie befinden sich also da, wo Sensorik und Aktorik direkt auf die physische Umgebung treffen. An der Netzwerkkante werden oft batteriebetriebene Geräte mit begrenzter Rechen- und Speicherkapazität eingesetzt. Als eingebettete Systeme gelten sie jedoch nicht nur wegen dieser Beschränkungen, sondern weil ihre Hardware und Software für eine bestimmte Aufgabe oder einen begrenzten Funktionsumfang gemacht sind (Silva et al., 2019, S. 10375; Das, 2013, S. 34).
+
+Einfache eingebettete Anwendungen können ohne Betriebssystem als fortlaufende Hauptschleife mit erweiternden Interrupt-Routinen umgesetzt werden. Wenn jedoch mehrere Aufgaben, Kommunikationswege und gemeinsam genutzte Ressourcen dabei koordiniert werden müssen, kann ein eingebettetes Betriebssystem die Verwaltungs- und Abstraktionsdienste bereitstellen, die dafür benötigt werden (Das, 2013, S. 296–297; Silva et al., 2019, S. 10375).
+
+Hier kommen Echtzeitbetriebssysteme (Real-Time Operating Systems, RTOS) ins Spiel. Im Gegensatz zu normalen Allzweck-Betriebssystemen kommt es hierbei nicht auf einen hohen Durchsatz an, sondern darauf, dass zeitkritische Prozesse ihre Reaktionszeit zuverlässig und vorhersagbar einhalten. (Altoumi \& Ahmed, 2025, S.1) Ein quelloffener Vertreter ist das Zephyr RTOS, welches speziell für ressourcenbeschränkte, vernetzte eingebettete Systeme (Embedded Systems) konzipiert wurde und über eine modulare Architektur verfügt.
+
+
+\section{Motivation}
+Die Skalierbarkeit und Konfigurierbarkeit von modernen OS wie Zephyr bieten Softwareentwicklern eine hohe Flexibilität. Auf der anderen Seite stehen sie jedoch vor einem Dilemma: Die Aktivierung weiterer Systemdienste, Netzwerkprotokolle oder Schutzmechanismen kann den RAM- und Flash-Bedarf erhöhen und gleichzeitig das Laufzeitverhalten beeinflussen. Wie groß dieser Einfluss ist, hängt von der jeweiligen Konfiguration, den aktiven Hintergrundfunktionen und dem erzeugten Firmware-Abbild ab (Silva et al., 2019, S. 10375–10376).
+
+Vor allem bei ressourcenbeschränkten Geräten können kleine Anpassungen in der Systemkonfiguration darüber entscheiden, ob eine Anwendung ihre vorgegebenen Fristen einhält oder der physisch vorhandene Speicher überschritten wird. Gerade im Kontext zu eingebetteten Systemen spielt der Determinismus eine wichtige Rolle, da das Verpassen der Fristen zu Konsequenzen führen kann. Daher ist das zeitliche Verhalten eines RTOS wichtig.
+
+Die Leistung eines RTOS hängt daher davon ab, wie die Parameter und die aktivierten Module gewählt sind. Daher ist es besonders wichtig in der Praxis, die genauen Auswirkungen und Einflüsse verschiedener Konfigurationen bzgl. der Systemleistung (empirisch) zu messen und die Ergebnisse zu verstehen.
+
+
+\section{Problemstellung und Forschungsfrage}
+Obwohl Zephyr ein weitverbreitetes RTOS ist und für eine Vielzahl von Hardware-Plattformen konzipiert ist, liefert die hier verwendete Literatur nur begrenzte Aussagen über den Einfluss von Zephyr-Konfigurationen auf derselben Hardwareplattform. Das Problem liegt darin, dass die Abhängigkeiten zwischen den aktivierten Softwaremodulen, wie bspw. Logging, und dem daraus entstehenden Ressourcenverbrauch auf realer Hardware nur schwer abschätzbar ist.
+
+Aus dieser Herausforderung leiten sich der Titel der Arbeit, „\emph{Leistungsbewertung eines Echtzeitbetriebssystems auf ressourcenbeschränkter Hardware}“ und die Forschungsfrage ab:
+
+\textbf{\emph{Wie verhalten sich Laufzeitverhalten und Speicherverbrauch von Zephyr RTOS in Abhängigkeit von der Konfiguration auf ressourcenbeschränkter Hardware?}}
+
+Aus dieser Frage leiten sich zudem folgende Unterfragen ab:
+
+\begin{itemize}
+\item \emph{Wie verändert sich die Context-Switch-Latenz?}
+\item \emph{Wie verändert sich die Interrupt-Latenz?}
+\item \emph{Wie verändert sich das Timer-Jitter?}
+\item \emph{Wie beeinflussen die Konfigurationen Heap-Allokation und Speicherfragmentierung?}
+\item \emph{Wie beeinflussen die Konfigurationen den Speicherbedarf (RAM/ ROM)?}
+\end{itemize}
+
+\section{Zielsetzung und Beitrag}
+Das Ziel dieser Arbeit ist es, ein systematisches und reproduzierbares Leistungsbewertungsverfahren (Benchmark) für das Zephyr RTOS auf einer ressourcenbeschränkten Zielplattform durchzuführen und zu evaluieren. Dabei werden drei verschiedene praxisnahe Konfigurationsszenarien definiert. Diese werden dann mit unterschiedlichen Benchmarks miteinander verglichen.
+
+Die Konfigurationen umfassen:
+
+\begin{itemize}
+\item \textbf{Minimal: }Das absolute Minimum an Funktionen und Funktionen, die benötigt werden, um alle Benchmarks auf dem verwendeten Mikrocontroller durchführen und messen zu können.
+\item \textbf{Logging: }Die Minimal-Konfiguration in Verbindung mit dem Logging-Subsystem, welches aktiviert wird. Diese Konfiguration dient dazu, den Einfluss von oft benutzten Systemfunktionen zu veranschaulichen.
+\item \textbf{IoT-Stack}: Die Benchmark-Konfiguration erweitert die Minimal-Konfiguration um OpenThread, CoAP und DTLS/ PSK. Firmware-Updates über MCUmgr und MCUboot werden davon getrennt in der Demonstrationsanwendung \lstinline[style=fileinline]|iot_sensor| untersucht.
+\end{itemize}
+Im Fokus der beschriebenen Untersuchung stehen zudem zwei Kernbereiche:
+
+\begin{itemize}
+\item \textbf{Speicherverbrauch:} Die Messung, wie sich die verschiedenen Konfigurationen auf den statischen und dynamischen Speicherbedarf (RAM und ROM) auswirken.
+\item \textbf{Laufzeitverhalten:} Die Analyse von Echtzeit-Metriken, wie der Dauer von Kontextwechseln und der Latenz bei der Verarbeitung von Interrupts.
+\end{itemize}
+Der Beitrag dieser Arbeit liegt darin, Metriken zu messen, um somit die Mechanismen des Systems anhand von empirischen Messdaten aufzuzeigen und zu evaluieren. Die daraus resultierenden Erkenntnisse sollen Entwicklern eine Hilfestellung und Entscheidungsgrundlage bieten, um Zephyr für zukünftige IoT-Anwendungen ressourcenschonend und optimal zu konfigurieren. Die dokumentierte Methodik kann außerdem als Ausgangspunkt für spätere RTOS-Vergleiche dienen. Ein direkter Zahlenvergleich mit RIOT oder FreeRTOS wäre jedoch nur bei vergleichbarer Hardware, Anwendung, Konfiguration, Werkzeugkette und Messpunktdefinition belastbar (Silva et al., 2019, S. 10378–10381).
+
+
+\section{Aufbau der Arbeit}
+Die vorliegende Arbeit ist in mehrere, aufeinander aufbauende Kapitel unterteilt. Zuerst werden die relevanten theoretischen und technischen Grundlagen und der aktuelle Stand der Forschung dargestellt. Aufbauend darauf werden die Methodik, der Versuchsaufbau und das Benchmark-Design beschrieben. Anschließend werden die Ergebnisse diskutiert, die Validität der Untersuchung betrachtet und die Forschungsfrage, inklusive der Unterfragen beantwortet. Zuletzt werden ein Fazit und ein Ausblick auf mögliche weitere Untersuchungen gebildet.
+
+\textbf{Kapitel 1 }Das erste Kapitel bildet die Einleitung der Arbeit und führt in die Thematik ein. Dabei werden Konzepte des IoT und von ressourcenbeschränkten Systemen eingeführt. Dabei werden die besonderen Anforderungen solcher Systeme angesprochen und die Grenzen von Bare-Metal-Programmierung und klassischen Betriebssystemen erläutert. Anschließend werden Echtzeitbetriebssysteme vorgestellt, wobei Zephyr RTOS in dieser Untersuchung verwendet wird.
+
+\textbf{Kapitel 2 }Im zweiten Kapitel werden die für die Arbeit relevanten Konzepte von Systemen und deren zeitlichen Anforderungen eingeführt. Dabei werden Begriffe wie Freigabezeitpunkt, Abschlusszeitpunkt, Antwortzeit, Frist und Fristüberschreitung definiert. Außerdem werden zeitliche Anforderungen und Determinismus erläutert. Anschließend werden Echtzeitsysteme und deren unterschiedlichen Varianten erläutert. Basierend darauf werden eingebettete Systeme, Mikrocontroller und eingebettete Betriebssysteme vorgestellt. Anschließend werden die Eigenschaften von Echtzeitbetriebssystemen erläutert. Demnach wird das für die Untersuchung verwendete Zephyr RTOS vorgestellt. Neben der Architektur und modularer Konfigurierbarkeit werden dabei die für die spätere Untersuchung relevanten Kernel-Dienste im Detail behandelt, darunter Threads und Scheduling, Synchronisation mittels Semaphore, Interrupts, Timer und das Konzept des tickless Kernels, die Speicherverwaltung über System- und eigene Heaps und das Logging-Subsystem. Dies wird zudem ergänzt um die Timing-API, mit der einige Laufzeitmessungen dieser Arbeit durchgeführt werden. Darüber hinaus wird das Zephyr-eigene Build- und Konfigurationssystem eingeführt, darunter das Kconfig-Konfigurationssystem, inklusive Kconfig-Fragmenten, der Modul-Mechanismus zur Einbindung eigener Bibliotheken über CMake, das Werkzeug West zur Verwaltung des Arbeitsbereichs (\emph{workspace}) und die im Build-System enthaltenen Werkzeuge zur Analyse des Speicherbedarfs. Zuletzt werden die für die spätere Untersuchung verwendeten Benchmark-Metriken, darunter Context-Switch-Zeit, Interrupt-Latenz, Timer-Jitter, Speicherverbrauch und das Heap-Verhalten, konzeptionell eingeführt.
+
+\textbf{Kapitel 3 }Im dritten Kapitel wird der aktuelle Stand der Forschung zum Thema RTOS-Benchmarking dargestellt und diese Arbeit darin eingeordnet. Zuerst wird erläutert, welche Probleme beim Vergleich und der Bewertung von Echtzeitsystemen entstehen, darunter Fragen zur Reproduzierbarkeit und Vergleichbarkeit mit anderen Betriebssystemen wie FreeRTOS, RIOT oder Contiki-NG. Anschließend werden bestehende RTOS-Vergleichsstudien vorgestellt, die Zephyr unter anderem bzgl. Speicherverbrauch, Zeit-Determinismus und Kontextwechsel-Latenz messen. Danach werden Zephyr-spezifische Arbeiten behandelt, darunter Zephyrs eigene Referenz-Benchmarks und Studien, die Zephyr in bestimmten Anwendungsszenarien einsetzen, bspw. zur Absicherung durch TLS/ DTLS oder zur KI-Inferenz. Zuletzt wird diese Arbeit von den anderen Studien abgegrenzt, indem herausgearbeitet wird, wie sich ihre Methodik von den anderen Studien unterscheidet.
+
+\textbf{Kapitel 4 }Im vierten Kapitel werden die Methodik und der Versuchsaufbau der Untersuchung beschrieben. Zuerst wird das quantitative, experimentelle Forschungsdesign vorgestellt. Anschließend wird das Design anhand der unabhängigen Variable (der jeweils aktiven Zephyr-Konfiguration), der fünf Laufzeit- und Heap-Benchmarks und den dabei bestimmten statischen RAM-/ROM-Fußabdruck und der kontrollierten variablen erklärt. Dabei wird auch die technische Isolation der einzelnen Messungen auf Ebene der Firmware-Builds und die kumulative Anlage der Konfigurationsstufen begründet. Anschließend werden die verwendete Zielplattform, das nRF52840 Development Kit mit seiner für die Untersuchung relevanten Interrupt- und Zeitgeberhardware und die eingesetzte Softwareumgebung beschrieben. Danach werden die drei Konfigurationen Minimal, Logging und IoT-Stack als unabhängige Variable und die fünf Benchmarks Context-Switch-Latenz, Interrupt-Latenz, Timer-Jitter, Heap-Allokationsgeschwindigkeit und Heap-Fragmentierung als abhängige Variablen vorgestellt. Anschließend werden die über alle Konfigurationen und Metriken hinweg konstant gehaltenen Variablen dargestellt, darunter Hardware, Compiler und Werkzeugkette (\emph{toolchain}), Zephyr-version, die gemeinsame Build-Konfiguration, der verwendete Mess- und Statistikmechanismus und die Anzahl der Messwiederholungen. Zuletzt wird der gesamte, für jede Messzelle gleiche Ablauf einer Messung dargestellt, darunter das Einrichten des Arbeitsbereichs, das Bauen und Flashen der jeweiligen Konfiguration und das Auslesen und Dokumentieren der Ergebnisse.
+
+\textbf{Kapitel 5 Benchmark-Design }Im fünften Kapitel wird das Benchmark-Design im Detail\textbf{ }beschrieben.\textbf{ }Für jede der fünf Laufzeit- und Heap-Benchmarks und den dabei bestimmten statischen RAM-/ROM-Fußabdruck wird dabei dargestellt, was genau gemessen wird, wie die jeweilige Messmethode technisch umgesetzt ist, welche Fehlerquellen kontrolliert werden müssen und warum die jeweilige Metrik für die Forschungsfrage relevant ist. Dabei werden die Kontextwechsel-Latenz in beiden varianten Semaphor-Weckung und kooperatives Yielding, die Interrupt-Latenz eines softwaregetriggerten Interrupts, der Jitter eines periodischen Timers, die Geschwindigkeit von Heap-Allokation und Freigabe und zuletzt der Zustand des Heapspeichers nach einem fragmentierten Zugriffsmuster. Zu Beginn wird jedoch erstmal der Selbsttest als Validierungsschritt der Messkette erwähnt, der selbst keine der fünf Metriken darstellt, aber für die interne Validität der Messungen relevant ist.\textbf{ }
+
+\textbf{Kapitel 6 }Im sechsten Kapitel wird die softwaretechnische Umsetzung der Untersuchung beschreiben. Zuerst wird die Struktur des entwickelten Projekts und dessen Einbindung in den West-Arbeitsbereich vorgestellt. Anschließend wird die gemeinsam von allen Benchmarks verwendete Mess-Infrastruktur erläutert. Dabei werden die öffentliche Schnittstelle der entwickelten Messbibliothek, die verwendete Zeitbasis und deren Kalibrierung des Messaufwands beschrieben. Außerdem wird die laufende statistische Auswertung der Mesergebnisse beschrieben. Darüber hinaus wird das einheitliche Ausgabeformat der Ergebnisse und die Parametrisierung der Messbibliothek über Kconfig erläutert.\textbf{ }Anschließend werden die für die Untersuchung entwickelten Konfigurationsstufen vorgestellt. Hierbei wird zuerst die gemeinsame Basis-Konfiguration beschrieben. Danach werden die einzelnen Minimal-, Logging- und IoT-Konfigurationen und deren jeweiligen Entwurfsentscheidungen erläutert. Bei der IoT-Konfiguration liegt zudem der Schwerpunkt auf den Netzwerk- und Sicherheits-Subsystemen Thread, CoAP und DTLS/ PSK und auf der bewussten Abgrenzung zu dem getrennt behandelten Firmware-Update-Subsystem. Der Fokus des Kapitels liegt dabei auf der nachvollziehbaren Umsetzung der in den vorherigen Kapiteln beschriebenen Methodik und des Benchmark-Designs.
+
+\textbf{Kapitel 7 Messergebnisse}
+
+\textbf{Kapitel 8 Diskussion}
+
+\textbf{Kapitel 9 Validität}
+
+\textbf{Kapitel 10 Fazit}
+
+\textbf{Kapitel 11 Ausblick}

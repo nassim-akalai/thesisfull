@@ -1,0 +1,32 @@
+% Automatisch aus der Word-/LaTeX-Konvertierung übernommen.
+\chapter{Validität}
+
+
+\section{Interne Validität}
+
+\section{Externe Validität}
+Bei der externen Validität von einer Untersuchung handelt es sich eine Beschreibung davon, wie weit sich die Ergebnisse auf andere Bedingungen als die untersuchten, übertragen lassen. Dabei ergeben sich für diese Arbeit mehrere Einschränkungen der Übertragbarkeit.
+
+Erstens wurden alle Messungen auf genau einer Hardware-Plattform durchgeführt. Dabei handelt es sich um den nRF52840 DK mit einem 32-Bit-Arm-Cortex-M4F-Prozessor bei 64 MHz Taktfrequenz (siehe 4.2). Andere Mikrocontroller-Architekturen, wie bspw. Cortex-M0+, dem Cortex-M7 oder RISC-V-basierte Systeme haben andere Pipeline-Tiefen, Speicherzugriffszeiten und Interrupt-Controller-Architekturen. Die absoluten Zyklenzahlen dieser Arbeit können daher nicht direkt auf andere Hardware übertragen werden. Ob sich dabei die relativen Unterschiede zwischen den Konfigurationsstufen auch auf andere Hardware übertragen lassen, wurde nicht untersucht.
+
+Zweitens wurde nur Zephyr in der Version v3.7.2 (LTS) mit dem Zephyr SDK 0.16.9 (GCC 12.2.0) untersucht (siehe 4.6.2, 4.6.4). Der Kernel und auch einzelne APIs können sich zwischen den Zephyr-Versionen ändern.
+
+Drittens wurden nur drei Konfigurationsstufen aus dem größeren Kconfig-Raum von Zephyr untersucht (siehe 4.4). Andere Funktionskombinationen, wie z.B. Bluetooth, USB, Dateisysteme, Userspace/ MMU-Isolation, wurden nicht gemessen und ihre Kosten lassen sich auch nicht aus den ergebenen Daten ableiten.
+
+Viertens wurde als praxisnahes Anwendungsbeispiel nur ein IoT-Sensor-Szenario über Thread, CoAP und DTLS untersucht (siehe 6.4). Andere verbreitete IoT-Kommunikationsstacks, wie bspw. Bluetooth Low Energy, Wi-Fi oder Matter über Wi-Fi/ Ethernet, wurden nicht untersucht und können daher andere Ressourcenkosten aufweisen.
+
+In Kapitel 8.4 wurde eine Einordnung dieser Arbeit gegen Silva et al. (2019) durchgeführt, welche einen externen Referenzpunkt bringt. Wenn die eigenen Fußabdruck-Werte mit denen einer unabhängigen Studie übereinstimmen oder sich ähneln, dann wird das Vertrauen in die Übertragbarkeit der Methodik dadurch verstärkt. Es ersetzt jedoch auf der anderen Seite keine eigene Messung auf anderer Hardware oder mit anderen Zephyr-Versionen.
+
+\section{Messbedingter Zusatzaufwand}
+Jede Zeitmessung an einem laufenden System beeinflusst das gemessene Ergebnis durch ihre eigene Durchführung. Dieser Effekt wird Messaufwand genannt. Der Messaufwand in der Messmethodik, die für diese Arbeit entwickelt wurde, ist vor allem das Auslesen des DWT-Zyklenzählers (siehe 6.2.3). Es beansprucht nämlich vor und nach dem zu messenden Vorgang einen kleinen Zeitanteil.
+
+Um diesen Anteil aus den Ergebnissen rauszurechnen, wird der Messaufwand vor jeder Messreihe kalibriert. Der Zyklenzähler wird 100-mal direkt hintereinander ausgelesen, ohne dass dazwischen irgendwas gemessen wird. Dann wird das Minimum aller 100 Differenzen als Kalibrierungswert genommen. Dabei ist bewusst das Minimum ausgesucht worden. Störeinflüsse können nämlich eine einzelne Kalibrierungsmessung nur verlängern, nicht verkürzen. Dadurch wird der echte Grundaufwand durch das Minimum so gut wie möglich angenähert.
+
+Dieser kalibrierte Wert wird dann anschließend von jedem einzelnen rohen Messwert abgezogen, bevor er in die laufende Statistik (siehe 6.2.4) einfließt. In den Messungen lag der kalibrierte Messaufwand bei 12 Zyklen. In den dokumentierten Kalibrierungen wurde derselbe Kalibrierungswert beobachtet. Daraus folgt keine allgemeine Unabhängigkeit des Messaufwands von der Konfiguration.
+
+Die Kalibrierung erfasst jedoch nur den Zeitaufwand des Zähler-Auslesens selbst. Daher werden nicht andere mögliche Seiteneffekte, die durch den Code entstehen können, wie bspw. veränderte Flash-Adressen von benachbarten Funktionen erfasst (siehe 9.1). Wie stark solche Änderungen des Flash-Layouts die einzelnen Messwerte beeinflussen, wurde in dieser Untersuchung nicht separat gemessen. Sie bleiben daher eine mögliche Quelle von systematischen Abweichungen zwischen den Firmware-Builds.
+
+Der Selbsttest (siehe Kapitel 5) ist eine weitere Kontrolle für die Nachvollziehbarkeit der gemeinsam benutzten Zeitmessungs- und Auswertungskette. Er prüft die gemeinsame Wirkung von Zeitbasis, Abzug des Messaufwands und Auswertung anhand einer vorgegebenen Busy-Wait-Dauer auf Nachvollziehbarkeit. Die einzelnen Teile werden dadurch nicht unabhängig voneinander validiert. Das hierbei definierte Abnahmekriterium ist in allen Selbsttests durchgeführt und erfüllt worden.
+
+\section{Limitierungen}
+% ===== END KONVERTIERTER INHALT =====
