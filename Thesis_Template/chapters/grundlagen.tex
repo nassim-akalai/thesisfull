@@ -1,0 +1,55 @@
+% !TeX spellcheck = de_DE
+% Auto-konvertiert aus BA Entwurf.docx. Inhalt sprachlich/fachlich bitte final gegenpruefen.
+
+\chapter{Grundlagen}
+\label{ch:grundlagen}
+
+Im folgenden Abschnitt werden grundlegende Begriffe für das Verständnis dieser Arbeit definiert. Dabei werden unter anderem die Begriffe Job und Task verwendet. Ein Job umfasst hierbei jede Einheit an Arbeit, welche vom System geplant und umgesetzt wird. Entsprechend wird eine Menge von Jobs als Task bezeichnet.
+
+\section{Systeme und zeitliche Anforderungen}
+
+System Ein System ist eine Abbildung bestehend aus einer Menge von Eingaben und Ausgaben (Inputs und Outputs). Die internen Details können dabei, sofern sie nicht von besonderem Interesse sind, als eine Art schware Box (Black Box) abstrahiert werden.(Laplante)
+
+Release Time Der Freigabezeitpunkt (Release Time) eines Jobs bezeichnet den zeitpunkt, in welcher ein Job zur Umsetzung zur Verfügung steht. Dieser Job kann ab dem Zeitpunkt seiner Release Time zu jeder Zeit geplant und umgesetzt werden. Ein Job hat keine Release Time, sobald alle Jobs zu dem Zeitpunkt der Umsetzung des Systems stattfinden.(Liu)
+
+Completion Time Der Abschlusszeitpunkt (Completion Time) eines Jobs bezeichnet den Zeitpunkt, an welchem dieser fertig umgesetzt wurde.
+
+Response Time Unter der Antwortzeit (Response Time) eines Systems versteht man die Zeit, zwischen dem Anlegen einer Menge von Inputs an ein System und der Realisierung des geforderten Verhaltens, inklusive der Verfügbarkeit aller zugehörigen Outputs. Wie schnell und zeitlich genau die Response Time sein muss, hängt von den Eigenschaften und dem Zweck des jeweiligen Systems ab.(Laplante)Des weiteren lässt sich die Response Time eines Jobs als die Zeitspanne von der Release Time bis zu dem Zeitpunkt, an dem er abgeschlossen ist, beschreiben. (Liu)
+
+Deadline Die Deadline eines Jobs ist der Zeitpunkt, zu dem seine Ausführung abgeschlossen sein muss. Die Zeitliche Anforderung eines Jobs kann dabei in Form seiner Response Time beschrieben werden. Die maximal erlaubte Response Time eines Jobs wird daher als seine Relative Deadline bezeichnet. Addiert man die Relative Deadline mit der Release Time eines Jobs, so erhält man seine Absolute Deadline. Wird der Job spätestens zu seiner absoluten Deadline abgeschlossen, so gilt die zeitliche Anforderung als eingehalten.(Liu)
+
+TardinessDie Tardiness eines Jobs misst, wie sehr dieser von seiner Deadline abweicht. Die Tardiness ist Null, wenn der Job vor oder zu seiner Deadline abgeschlossen ist. Falls dies nicht der Fall ist, ist der Job zu spät und die Tardiness entspricht der Differenz zwischen seiner Completion Time und Deadline.
+
+Timing Constraint Eine Einschränkung, die dem zeitlichen Verhalten eines Jobs auferlegt wird, wird allgemein als zeitliche Einschränkung (Timing Constraint) bezeichnet. Die Timing Constraint eines Jobs kann beispielsweise anhand seine Release Time und seiner relativen oder absoluten Deadline spezifiziert werden. Bei einigen komplexen Timing Constraints ist dies jedoch nicht der Fall. Timing Constraints können hierbei in zwei Kategorien aufgeteilt werden: Hart (Hard) und Weich (Soft). In dieser Untersuchung wird der Unterschied zwischen Hard und Soft Timing Constraints im Bezug zu ihrer Nützlichkeit für die System Performance unterschieden.Die Nützlichkeit eines Ergebnisses von einem Job, mit einer Soft Deadline nimmt allmählich mit dem Anstieg der Tardiness ab.Auf der anderen Seite nimmt die Nützlichkeit des Ergebnisses eines Jobs mit einer Hard Deadline abrupt ab, oder wird sogar negativ, sobald die Tardiness größer als Null ist. (Liu)
+
+Failed System Ein ausgefallenes System (Failed System) ist ein System, was eine oder mehrere Anforderungen, welche in den Systemspezifikationen festgelegt sind, nicht erfüllen kann. (Laplante)
+
+\section{Real Time Systems}
+
+Real Time
+
+Real-Time System Die vorherigen Definitionen bilden die Grundlage für eine praktische Definition eines Echtzeitsystems (Real-Time System, RTS). Ein RTS ist ein Computersystem, dessen logische Korrektheit sowohl auf der Korrektheit der Outputs als auch auf deren Rechtzeitigkeit beruht. In jedem Fall wird durch das Weglassen der Notwendigkeit des Konzepts der Rechtzeitigkeit jedes System zu einem RTS. Echtzeitsysteme sind oft reaktive oder eingebettete Systeme. Reaktive Systeme sind dabei welche, bei denen die Aufgabenplanung durch die fortlaufende Interaktion mit ihrer Umgebung gesteuert wird. RTS müssen zeitlich begrenzte Response Time Bedingungen erfüllen, da ansonsten schwerwiegende Konsequenzen inklusive eines System Ausfalls (System Failure) riskiert werden.(Laplante)
+
+Soft RTS Ein Soft RTS ist ein System, bei dem die Leistungsfähigkeit beeinträchtigt, aber nicht vollständig zerstört wird, wenn Response-Time Bedinugnen nicht eingehalten werden.(Laplante)
+
+Hard RTS Ein Hard RTS ist ein System, bei dem die Nichteinhaltung von nur einer einzigen Deadline zu einem vollständigen oder katastrophalen System Failure führen kann.(Laplante)
+
+Firm RTS Ein Firm RTS ist ein System, bei dem das Verpassen einiger weniger Deadlines nicht zu einem vollständigen System Failure führt, das Verpassen von mehr als einigen wenigen Deadlines jedoch zu einem vollständigen oder katastrophalen System Failure führen kann.(Laplante)
+
+\section{Embedded Systems}
+
+Embedded Systems Ein eingebettetes System ist ein System, das einen oder mehrere Computer, oder Prozessoren, enthält, die eine zentrale Rolle für die Funktionalität des Systems spielen, wobei jedoch das Gesamtsystem nicht notwendigerweise als Computer bezeichnet wird. (Laplante)Eingebettete Systeme werdentypischerweise für die Erfüllung von einer oder einer begrenzten Menge an Funktionen mithilfe von Hardware und Software entwickelt. Hardware und Software machen ein eingebettetes System zu einem Computer. Der Unterschied zu herkömmlichen PCs ist jedoch, dass eingebettete Systeme nur eine begrenzte Menge an Funktionen erfüllen können. Laut Lyla B. Dasgehören PCs somit zu der Kategorie „General Purpose Computer“, während eingebettete Systeme zu „Special Purpose Computer“ gehören. Die für die Funktion des eingebettetenSystems erforderliche Software wird dabei als „Firmware“ bezeichnet. Allgemein betrachtet besteht ein eingebettetes System aus einem Prozessor, Sensoren, Aktoren und Zwischenspeicher. Eine Anwendung soll also mit den Sensoren Daten einlesen können,welche vom Prozessor verarbeitet und an die Aktoren weitergegeben werden, um eine bestimmte Aufgabe zu erfüllen.(Das) Viele eingebettete Systeme sind Hard RTS. Jedoch können diese je nach Anwendung unterschiedliche Anforderungen aufweisen. Die Deadlines von Jobs in einem eingebetteten System werden aus der Reaktionsfähgikeit der Sensoren und Aktoren abgeleitet, welche von diesem überwacht und kontrolliert werden. (Liu)
+
+Mikrocontroller Ein Mikrocontroller (Microcontroller Unit, MCU) verfügt nicht nur über einen Prozessor, sondern auch über timer, parallele und serielle Schnittstellen, RAM, ROM, etc. Programm Code wird auf den internen ROM gebrannt und Anwendungs-Code läuft innerhalb des internen RAMs. Ein Mikrocontroller ist somit ein eigener Single-Chip Computer. Wenn ein solcher Mikrocontroller über eingebaute Peripheriegeräte verfügt, sodass das Design eines großen Systems mit diesen möglich ist, dann wird dieser Mikrocontroller ein „System on Chip“ (SoC) genannt.
+
+\section{Real Time Operating Systems}
+
+\section{Zephyr RTOS}
+
+Zephyr ist ein quelloffenes (open-source) RTOS, das für den Einsatz auf ressourcenbeschränkten eingebetteten Systemen entwickelt wurde. Das Projekt wird von der LinuxFoundation als ein gemeinschaftlich entwickeltes Open-Source-Projekt unterstützt. Zephyr verfolgt das Ziel, ein skalierbares und plattformübergreifendes OS für unterschiedliche Embedded-Anwendungen bereitzustellen. Zephyr kann, durch die Unterstützung unterschiedlicher Prozesorarchiitekturen und Hardwareplattformen auf Systemen mit verschiedenen Ressourcen- und Leistungsanforderungen eingesetzt werden. Die Architektur ist modular und konfigurierbar aufgebaut. Dadurch können benötigte Komponenten deaktiviert werden. Der Zephyr-Kernel untersützt zudem kooperatives und präemptives Threading und stellt Funktionen für die Aufgabenverwaltungg, Synchronisation, Speicherverwaltung und Interaktion mit Hardware bereit. Außerdem verfügt Zephyr über integrierte Schnittstellen für Gerätetreiber und Subsysteme für bspw. Metzwerkkommunikation, Bluetooth, USB, Dateisysteme und Logging. Durch die Möglichkeit, Zephyr zu konfigurieren, kann der benötigte Speicher- und Funktionsumfang an die verfügbare Hardware angepasst werden. Auf der anderen Seite unterstützt Zephyr auch leistungsfähigere Systeme.(Zephyr About the Zephyr Project)
+
+Zephyr basiert auf einem Kernel mit geringem Speicherbedarf. Dieser wurde für ressourcenbeschränkte und eingebettete Systeme entwickelt. Der Zephyr Kernel unterstützt hierbei eine Vielzahl von CPU-Architekturen, darunter die in dieser Arbeit verwendete ARMv7-M (Cortex-M4) Architektur. Zephyr wurde zudem durch Subsysteme modular konzipiert. Subsysteme umfassen hierbei logisch abgegrenzte Teile des OS, welche bestimmte Dienste bereitstellen, darunter beispielsweise Netzwerke, Dateisysteme oder Kommunikationsprotokolle, etc. Jedes Subsystem ist modular aufgebaut und kann somit konfiguriert, angepasst und erweitert werden.(Zephyr Doku Einleitung)
+
+Zephyr ist hauptsächlich in C geschrieben und unterstützt daher Anwendung, die in C geschrieben sind. Zephyr verfügt über einige API-Funktionen und API-Makros, welche durch C-Header-Dateien inkludiert werden können. Dabei muss die Funktion „main()“ den Rückgabewert int (integer) haben und den Wert Null (0) zurückgeben. Zephyr unterstützt auch weitere Sprachen wie C++ und Rust, wobei diese für die vorliegenden Untersuchungen nicht von Relevanz sind. (Zephyr Doku Language Support)
+
+
