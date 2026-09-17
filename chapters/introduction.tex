@@ -1,0 +1,114 @@
+% !TeX spellcheck = de_DE
+% Auto-konvertiert aus BA Entwurf.docx. Inhalt sprachlich/fachlich bitte final gegenpruefen.
+
+\chapter{Einleitung}
+\label{ch:einleitung}
+
+Das Internet der Dinge (Internet of Things, IoT) vernetzt eine wachsende Anzahl an Geräten und Sensoren im Alltag und in der Industrie. Es sorgt dafür, dass Menschen und Dinge jederzeit und überall mit alles und jedem verbunden sein können. Viele dieser Geräte arbeiten jedoch an der sogenannten Netzwerkkante (Network Edge) und sind an physischen und ökonomischen Limitierungen gebunden. Sie verfügen meistens nur über eine geringe Rechenleistung, sehr begrenzten Speicherplatz und sind oft auf Batterien, Akkus oder einer ähnlichen Energieversorgung angewiesen.Solche Geräte sind allgemeint bekannt als eingebettete Systeme (Ebedded Systems). (Paper)
+
+Diese eingebetteten Systeme sind zudem auch durch zeitliche Anforderungen charaktersiert. Um mit komplexen Aufgaben, wie die Erfassung von Sensordaten und drahtlose Kommunikation umgehen zu können, ist daher eine reine Programmierung ohne Betriebssystem (Bare-Metal-Programming) nicht ausreichend. Auf der anderen Seite sind vollwertige Standard-Betriebssysteme (Operating Systems, OS) wie Linux zu ressourcenintensiv für die Hardware. (Paper)
+
+Hier kommen Echtzeitbetriebssysteme (Real-Time Operating Systems, RTOS) ins Spiel. Diese bieten eine effiziente Aufgabenverwaltung und garantieren vorhersagbare (deterministische) Reaktionszeiten für zeitkritische Prozesse. Ein quelloffener Vertreter ist das Zephyr RTOS, welches speziell für ressourcenbeschränkte, vernetzte eingebettete Systeme (Embedded Systems) konzipiert wurde und über eine modulare Architektur verfügt. (Paper)
+
+\section{Motivation}
+
+Die Skalierbarkeit und Konfigurierbarkeit von modernen OS wie Zephyr bieten Softwareentwicklern eine hohe Flexibilität. Auf der anderen Seite stehen sie jedoch vor einem Dilemma: Die Aktivierung von zusätzlichen Systemdiensten, Netzwerkprotokollen oder Schutzmechanismen kann den Speicherbedarf (RAM und Flash) erhöhen, wodurch die Echtzeitfähigkeit des Systems verändert werden kann.
+
+Vor allem bei ressourcenbeschränkten Geräten können kleineAnpassungenin der Systemkonfiguration darüber entscheiden, ob eine Anwendung ihre vorgegebenen Fristen (Deadlines) einhält oder der physisch vorhandene Speicher überschritten wird. Gerade im Kontext zu eingebetteten Systemen spielt der Determinismus eine wichtige Rolle, da das Verpassen der Deadlines zu Konsequenzen führen kann. Daher ist das zeitliche Verhalten eines RTOS wichtig.
+
+Die Leistung eines RTOS hängt daher davon ab, wie die Parameter und die aktivierten Module gewählt sind. Daher ist es besonders wichtig in der Praxis, die genauen Auswirkungen und Einflüsse verschiedener Konfigurationen bzgl. der Systemleistung (empirisch) zu messen und die Ergebnisse zu verstehen.
+
+\section{Problemstellung und Forschungsfrage}
+
+Obwohl Zephyr ein weitverbreitetes RTOS ist und für eine Vielzahl von Hardware-Plattformen konzipiert ist, fehlen praktische Daten darüber, wie stark unterschiedliche Konfigurationsprofile die Hardware wirklich beeinflussen. Das Problem liegt darin, dass die Abhängigkeiten zwischen den aktivierten Softwaremodulen, wie bspw. Logging, und dem daraus entstehenden Ressourcenverbrauch auf realer Hardware nur schwer abschätzbar ist.
+
+Aus dieser Herausforderung leiten sich der Titel der Arbeit, „Leistungsbewertung eines Echtzeitbetriebssystems auf ressourcenbeschränkter Hardware“ und die Forschungsfrage ab:
+
+Wie verhalten sich Laufzeitverhalten und Speicherverbrauch von Zephyr RTOS in Abhängigkeit von der Konfiguration auf ressourcenbeschränkter Hardware?
+
+Aus dieser Frage leiten sich zudem folgende Unterfragen ab:
+
+\begin{itemize}
+\item Wie verändert sich die Context-Switch-Latenz?
+\item Wie verändert sich die Interrupt-Latenz?
+\item Wie verändert sich das Timmer-Jitter?
+\item Wie beeinflussen die Konfigurationen Heap-Allokation und Speicherfragmentierung?
+\item Wie beeinflussen die Konfigurationen den Speicherbedarf (RAM/ ROM)?
+\end{itemize}
+
+\section{Zielsetzung und Beitrag}
+
+Das Ziel dieser Arbeit ist es, ein systematisches und reproduzierbares Leistungsbewertungsverfahren (Benchmark) für das Zephyr RTOS auf einer ressourcenbeschränkten Zielplattform durchzuführen und zu evaluieren. Dabei werden drei verschiedene praxisnahe Konfigurationsszenarien definiert. Diese werden dann mit unterschiedlichen Benchmarks miteinander verglichen.
+
+Die Konfigurationen umfassen:
+
+\begin{itemize}
+\item Minimal: Das absolute Minimum an Funktionen und Features, die benötigt werden, um alle Benchmarks auf dem verwendeten Mikrocontroller durchführen und messen zu können.
+\item Logging:Die Minimal-Konfiguration in Verbindung mit dem Logging-Feature, welches aktiviert wird. Diese Konfiguration dient dazu, den Einfluss eines gängigen Stnandard-features zu veranschaulichen.
+\item IoT-Stack:Hierbei handelt es sich um eine IoT-Standard-Variante, in welcher ein Sensor seine Werte mittels CoAP-Server über DTLS bereitstellt und Firmware-Updates unterstützt.
+\end{itemize}
+
+Im Fokus der beschriebenen Untersuchung stehen zudem zwei Kernbereiche:
+
+\begin{itemize}
+\item Speicherverbrauch: Die Messung, wie sich die verschiedenen Konfigurationen auf den statischen und dynamischen Speicherbedarf (RAM und ROM) auswirken.
+\item Laufzeitverhalten: Die Analyse von Echtzeit-Metriken, wie der Dauer von Kontextwechseln (Context Switches) und der Reaktionszeit (Reaction Time) auf Hardware-Interrupts (Interrupt Latency).
+\end{itemize}
+
+Der Beitrag dieser Arbeit liegt darin, Metriken zu messen, um somit die Mechanismen des Systems anhand von empirischen Messdaten aufzuzeigen und zu evaluieren. Die daraus resultierenden Erkenntnisse sollen Entwicklern eine Hilfestellung und Entscheidungsgrundlage bieten, um Zephyr für zukünftige IoT-Anwendungen ressourcenschonend und optimal zu konfigurieren. Zudem sollen die gemessenen Ergebnisse eine Vergleichsgrundlage bieten, um Zephyr mit anderen RTOS, wie bspw. RIOT oder FreeRTOS vergleichen zu können. Dies soll Entwicklern helfen, sich für das passende OS basierend auf die Anforderungen ihrer Anwendung zu entscheiden.
+
+\section{Aufbau der Arbeit (Provisorisch)}
+
+\begin{itemize}
+\item EinleitungX
+\item MotivationX
+\item Problemstellung und ForschungsfrageX
+\item Zielsetzug und BeitragX
+\item Grundlagen
+\item Systeme und zeitliche Anforderungen X
+\item Real Time SystemsX
+\item Embedded SystemsX
+\item Real Time Operating Systems
+\item Zephyr RTOS
+\item Verwandte Arbeiten/ State of the Art
+\item Methodik \& VersuchsaufbauX
+\item ForschunsdesignX
+\item ZielplattformX
+\item SoftwareumgebungX
+\item Benchmark-Design
+\item Context-Switch
+\item Semaphore
+\item Yield
+\item Interrupt latency
+\item Timer Jitter
+\item Heap Allocation
+\item Fragmentation
+\item Implemtierung
+\item Projektstruktur
+\item Benchmark Infrastruktur
+\item Implementierung der Benchmarks
+\item Konfigurationen
+\item Minimal
+\item Logging
+\item IoT-Stack
+\item Messergebnisse
+\item Context-Switch
+\item Interrupt latency
+\item Timer Jitter
+\item Heap Allocation
+\item Fragmentation
+\item Diskussion
+\item Einfluss Logging
+\item Einfluss IoT Stack
+\item Trade Offs
+\item Vergleich mit Literatur
+\item Validität
+\item Interne Validität
+\item Externe Validität
+\item Overhead
+\item Limitierungen
+\item Fazit
+\item Ausblick
+\end{itemize}
+
+

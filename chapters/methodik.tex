@@ -1,0 +1,121 @@
+% !TeX spellcheck = de_DE
+% Auto-konvertiert aus BA Entwurf.docx. Inhalt sprachlich/fachlich bitte final gegenpruefen.
+
+\chapter{Methodik und Versuchsaufbau}
+\label{ch:methodik}
+
+\section{Forschungsdesign}
+
+Die Arbeit verfolgt ein quantitatives und experimentelles Forschungsdesign mit kontrollierter Variation der Zephyr-Konfiguration. Dabei werden wiederholte Messungen auf derselben Hardwareplattform durchgeführt (Within-Subject-Design). Dieselbe physische Plattform, ein nrf52840-DK, durchläuft nacheinander drei Firmware-Builds, die sich jeweils in der zu untersuchenden Kernel-/ Stack-Konfiguration unterscheiden. Alle übrigen relevanten Rahmenbedingungen, darunter Hardware, CPU-Taktfrequenz, Zephyr-Version. Compiler und Messverfahren, werden dabei konstant gehalten. Dadurch werden hardwarebedingte Unterschiede zwischen den Messungen minimiert. Zudem können Unterschiede in den Messergebnissen auf die Konfigurationsänderungn zurückgeführt werden, soweit andere Einflussfaktoren kontrolliert werden (Ceteris-Paribus-Prinzip). Quantitativ bedeutet im Kontext dieser Untersuchung, dass diese anhand von messbaren numerischen Größen durchgeführt wird. Zudem bedeutet experimentell, dass Einflussfaktoren gezielt verändert werden und beobachtet wird, wie sich dadurch eine abhängige Messgröße verändert.
+
+Das Versuchsdesign folgt somit der klassischen Struktur eines kontrollierten Expweriments:
+
+\begin{itemize}
+\item Unabhänige Variable (UV): Die aktive Zephyr-Konfiguration (Minimal, Logging. IoT-Stack) ist der zu manipulierender Faktor.
+\item Abhängige Variablen (AV): Die fünf gemessenen RTOS-Leistungsmetriken (Context-Switch, Interrupt Latenz, Timer-Jitter, Heap-Allokationsgeschwindigkeit, Heap-Fragmentierung), wobei hierbei die Wirkung der Zephyr-Konfigurationen beobachtet wird.
+\item Kontrollierte Variablen: Alle für die Messung relevanten Rahmenbedingungen, die zwischen den Durchläufen konstant gehalten werden, um Reproduzierbarkeit zu ermöglichen. Dazu gehören die verwendete Hardware, CPU-Taktfrequenz, Compiler, Zephyr-Version, Messverfahren, Stichprobenumfang und Umgebung. Die Anzahl der Messwiederholungen und der Messmechanismus für die Datenerhebung für alle Konfigurationen sind ebenfalls festgelegt.
+\end{itemize}
+
+Jede Kombination aus Konfiguration und Metrik (In der restlichen Arbeit als „Zelle“ bezichnet) wird als eigenständiges, minimales Firmware-Image gebaut. Dabei wählt CMakeLists.txt durch die Methode target\_sources\_ifdefgenau eine bm\_*.c-Datei zur Build-zeit aus. Kconfig macht darüber hinaus die Auswahl über choice BENCH\_TYPE explizit. Durch diese Isolation wird verhindert, dass sich mehrere Benchmarks im selben Binary gegenseitig durch Codegrößen-, Cache- oder Speicherlayout-Effekte verfälschen.
+
+Die drei Konfigurationsstufen sind zudem kumulativ/ inkrementell angelegt. Die Datei logging.conf ist hierbei lediglich die minimal.conf inklusive eines Features. Dadurch wird nicht nur das IoT-Stack mit dem Kernel-Build verglichen, sondern auch der isolierte Effekt einzelner Subsysteme, in diesem Fall das Logging-Subsystem sauber quantifizierbaar bleibt. Durch diese Methodik wird eine Stufenanalyse ermöglicht anstelle eines Zwei-Gruppen-Vergleichs.
+
+Für jede Zelle des Versuchsplans wird eine Stichprobe von N Messwerten erghoben, aus der deskriptive Kennzahlen berechnet werden. Diese sind das Minimum, Maximum, der Mittelwert und die Stichproben-Standardabweichung. Außerdem existiert ein Referenzpunkt gegen Zephyr‘s eigene Benchmarks, welche dieselbe Timing-API verwenden. Dies dient als externe Validierung der selbst entwickelnten Messungen.
+
+\section{Unabhängige Variablen}
+
+Die UV werden als Kconfig-Fragmente realisiert, das über EXTRA\_CONF\_FILE zusätzlich zur minimalen Basis prj.confder Mess-App eingebunden wird. Die Basis enthält nur das, was für jede Messung zwingend nötig ist, darunter die Timing-API, UART/ printk-Ausgabe und das heap für die Allocation-Benchmarks. Diese Basis ist bewusst identisch in allen drei Konfigurationsstufen, damit diese nicht Teil der Variation wird.
+
+\subsection{Minimal Konfiguration}
+
+Der schlanke RTOS-Kern ohne jegliche Zusatzdienste. Boot-Banner, Timesclicing, Assertions, Logging, Thread-Namen, MPU/ Stack-Guard, SEGGER-RTT und GPIO-Treiber sind explizit deaktiviert. Diese Konfigurationsstfe dient als Baseline und liefert die „reinen“ Kernelkosten ohne fremdeinflüsse. Besonders ohne MPU-bedinge Stack-Guard-Reporgrammierung bei jedem Context Switch und ohne durch Timceslicing verursachte Scheduler-Unterbrechungen.
+
+\subsection{Logging}
+
+Diese Konfiguration baut auf der Minimal-Konfiguration auf und fügt genau ein feature-Delta hinzu: Das Zephyr-Logging-Subsystem im Defferred-Modus. Dies beinhaltet einen Ringpuffer und einen eigenen Log-Thread HIER UART. Diese Stufe isoliert die Kosten eines einzelnen Dev-/ Diagnose-Features und beantwortet die Frage, welche Kosten ein einzelnes Feature wie Logging in Anbetracht der Laufzeit und dem Footprint versursacht.
+
+\subsection{IoT-Stack}
+
+Dies ist die komplexeste Stufe.
+
+HIER IOT STACK ERKLÄREN SOBALD FERTIG.
+
+\section{Abhängige Variablen}
+
+Alle Metriken sind in eigenen bm\_*.c Dateien unter src implementiert, folgen einem einheitlichen Muster und werden in METHODIK.md mit Definitionen, Messpunkten und Fehlerquellen dokumentiert. Das Muster legt einen Zeitstempel vor und nach dem Ereignis via bench\_now(), eine Overhead-Korrektur, Akkumulation in structbench\_statsund einer CSV-Ausgabe via bench\_report() fest.
+
+\subsection{Context-Switch-Latenz}
+
+Der Context-Switch wurde im Benchmark bm\_ctx\_switch.cimplementiert. Hier wird die Zeit vom Auslösen eines Threadwechsels bis zur ersten Instruktion im Zeilthread gemessen. Dies erfolgt in zwei Varianten:
+
+ctx\_switch\_sem\_wakeup: Semaphore-geweckterhöherpriorer Worker-Thread
+
+ctx\_switch\_yield: Kooperatives Ping-Pong gleichpriorerTheradsvia k\_yield().
+
+Dieser Benchmark erfasst die Scheduler-Entscheidung inklusive PendSV-Kontextwechsel.  Grundkosten jeder Multithreading-Architektur, zentrale Vergleichsgröße zwischen den drei Konfigurationen.
+
+\subsection{Interrupt-Latenz}
+
+Die Interrupt-Latenz wurde im Benchmark bm\_irq\_latency.cimplementiert. Es wird die Zeit vom Software-Trigger bis zur ersten ISR-Instruktion gemessen. Dies erfolgt durch NVIC\_SendPendingIRQauf einer ungenutzten Peripherie-leitung des nrf52840. Dieser benchmark zeigt, wie stark Kernel-Features, wie bspw. Logging, den determinismus-kritischsten Pfad eines RTOS beeinflussen.
+
+\subsection{Timer-Jitter}
+
+Der Timer-Jitter wurde im Benchmark bm\_timer\_jitter.cimplementiert. Hier wird die Abweichung der Ist- von der Soll-Periode eines periodischen 10 msk\_timergemessen. Die Messung läuft über k\_uptime\_ticks(), was RTC-1 gestützt ist und dadurch auch im Schlaf läuft.
+
+\subsection{Heap-Allokationsgeschwindigkeit}
+
+Die Heap-Allokationsgeschwindkeit wurde im Benchmark bm\_heap\_alloc.cimplementiert. Hier wird die Zeit für die Funktionen k\_mallocund k\_freeeines 64-Byte-Blocks gemessen. Dabei sind die Alloc und Free Befehledirekt aufeinanderfolgend, wobei der Best Case ein leerer Heap darstellt. Dieser benchmark ist relevant, weil sys\_heapeine variable Laufzeit hat, was für RTS kritisch ist.
+
+\subsection{Heap-Fragementierung}
+
+Die Heap-Fragmentierung wurde im Benchmark bm\_heap\_frag.cimplementiert. Hierbei handelt es sich nicht um ein Zeit-, sondern um ein Zustandsmaß. Ein eigener 8-KiB k\_heap wird mit 32x128-Byte-Blöcken gefüllt. Dabei wird im Schachbrettmuster jeder zweite freigegeben und anschließend die Belegung und der größte zusammenhängende Freiblock protzokolliert. Dieser freiblock wird durch eine eigene Bisektions-Probe protokolliert, da sys\_heapdiese Kennzahl nicht direkt liefert. Dieser Benchmark zeigt ein für MMU-lose Systeme spezifisches Risiko: Rechnerisch ausreichender, aber durch Fragmentierung nicht mehr am Stück nutzbarer Speicher.
+
+Alle Metriken, abgesehen von der Heap-Fragementierung, liefern Zeitwerte in CPU-Zyklen und werden identisch statistisch ausgewertet. Die Heap-Fragmentierung hingegen liefert Bytes bzw. Zustände und wird daher mit einem seperaten Ausgabeformat ausgegeben, um sie nicht fälschlicherweise in dieselbe Zeit-Statistik einzumsichen. Dies erfolgt in HEAPSTATS und HEAPPROBE anstatt der BENCH-CSV.
+
+\section{Kontrollierte Variablen}
+
+Diese Variablen werden püber alle Konfigurationsstufen und Metriken hinweg konstant gehaklten, um zu verhindern, dass Effejkte fälschlich der UV zugeschreiben werden.
+
+Hardware/ CPU-Frequenz
+
+Ein einziges physisches Board, das Nordic nrf52840 DK, mit einer CPU basierend auf der Cortex-M4F Architektur und einer Takt-Frequenz von 64 MHz. Es verfügt über 1 MB Flash und 256 KB RAM. Die Frequenz wird darüber hinaus zur Laufzeitkontrolle bei jedem Boot über die Methode timing\_freq\_get() in der BENCHMETAzeile in main.c mit ausgegeben. Falls es also zu einer Abweichung in der Takt-frequenz kommen sollte, wäre dies sofort sichtbar.
+
+Compiler und Toolchain
+
+In dieser Untersuchung wurde das Zephyr Software Development Kit (SDK) 0.16.9 verwendet. Der Ccompiler ist daher GCC 12.2.0, mit Binutils 2.38 und der Picolibc 1.8.6. Diese wurden über ZEPHYR\_SDK\_INSTALL\_DIR gepinnt, sodass sie identisch für alle Builds sind.
+
+Compiler optimierung
+
+Es wurde der Zephyr Default -0s in SIZE\_OPTIMIZATIONS für alle drei konfigurationen festgelegt. Keine der Konfigurationsstufen ändert das Optimierungslevel.
+
+Zephyr Version
+
+Bei der verwendeten Zephy Version handelt es sich um die Latest Stable Version (LTS), welches zum Zeitpunkt des Schreibens dieser Arbeit Zephyr 3.7.2 LTS ist. Dies wurde im Manifest west.yml übe revision: 3.7.2 mit import: true gepinnt. Dies übernimmt passende HAL-, MCUBoot-, mbedTLS- und OpenThread-Revisionen. Damit ist ausgeschlossen, dass ein Versionsdrift einen Einfluss zwischen den drei Messläufen nimmt.
+
+Build-Konfiguration (Sockel)
+
+Die in prj.conf definierte basis ist für alle drei UV-Stufen identisch. Diese beinhaltet Benchlib, printk/ UART/ Konsole, CONFIG\_CBPRINTF\_FP\_SUPPORT für Fließkomma-Ausgabe der Statistik und einen 64-KiB-System-Heap. Diese Basis wird nicht durch die Konfigurationen verändert, sondern lediglich ergänzt. Dadurch bleibt bspw. der ROM-Overhewad der Fließkomma-Ausgabe in jeder Konfiguration gleich groß und ermöglicht somit einen Vergleich.
+
+Messmechanismus (Timing/ Statistik)
+
+Der in CONFIG\_TIMING\_FUNCTIONS implementierte Messmechanismus ist für alle Zeitmetriken identisch. Dabei wird über den DWT-Zyklenzähler gemessen (DWT->CYCCNT, 1 Tick = 1 Takt = 15,625 ns @ 64 MHz). Zudem wird der Messoverhead durch zwei aufeinanderfolgende Zähler-Reads kalibriert mit einem Minimum voin 100 Versuchen und anshcließend von jedem Ergebnis subtrahiert. Dieser Mechanismus wurde in bench\_timing.cimplementeirt.
+
+Die Statistik basiert auf den Welford-Algorithmus, implementeirt in bench\_stats.c. Dabei handelt es sich um eine inkrementelle, numerisch s6tabike Berechnung von Mittekwert und Varianz ohne Speicherung der Einzelwerte (n-1-Stichproben-Standartabweichung) inklusive eines laufenden Minimums und Maximums. Diese identische Mess- und Auswertungskette über alle konfigurationen und Metriken hinweg sorgt dafür, dass beobachtete Unterschiede nicht auf unterschiedliche Messverfahren zurückgehen. Die Einzige Ausnahme bildet der Timer-Jitter-Benchmark, welcher k\_uptime\_ticks() verwendet anstelle des DWT. Aber auch dieser Unterschied wird über alle Konfigurationen hinweg verwendet und sorgt somit für keine Inkonsistenz.
+
+Anzahl der Messungen
+
+Die Anzahl der Messungen wurde ebenfalls einheiutlich gehalten: N = 1000 gewertete Iterationen, nachdem 10 Warm-up-Läufe verworfen wurden, da es bei den ersten Iterationen zu Cache-/ Pipeline- und Startpfad-Effekten kommen könnte, welche die Ergebnisse verfälschen würden. Dies ist ebenfalls konfigurierbar über CONFIG\_BENCHLIB\_ITERATIONS und CONFIG\_BENCHLIB\_WARMUP und wird zudem bei jedem Lauf in der BENCHMETA-Kopfzeile protokolliert. Dadurch ist die Stichprobengröße jeder Messreihe aus den Rohdaten nachvollziehbar und über alle Zellen des Versuchsplans identisch.
+
+\section{Zielplattform}
+
+Als Zielplattform für die Untersuchungen wird das nRF52840 Development Kit von Nordic Semiconductor verwendet. Die Plattform basiert auf einem 32-Bit Arm Cortex-M4 mit einer Taktfrequenz von 64 MHz und verfügt über 1 MB Flash-Speicher sowie 256 kB RAM. Damit bietet der Mikrocontroller eine klar definierte und ressourcenbeschränkte Hardwarebasis für die Untersuchung des Laufzeit- und Speicherverhaltens von Zephyr RTOS.
+
+Für die Untersuchung der Laufzeiteigenschaften sind vor Allem der NestedVectored Interrupt Controller (NVIC) und der Data Watchpoint and Trace (DWT) des Cortex-M4 relevant. Der NVIC übernimmt die Verarbeitung und Priorisierung von Interrupts und bildet damit die hardwareseitige Grundlage für die Messung der Interrupt-Latenz. Der DWT ermöglicht die Erfassung von CPU-Taktzyklen und wird für die hochauflösende Laufzeitmessung der Benchmarks eingesetzt. Bei 64 MHz entspricht ein CPU-Zyklus 15,625 ns, wodurch beispielsweise Kontextwechsel- und Interrupt-Laufzeiten mit hoher zeitlicher Auflösung bestimmt werden können.
+
+Für die Untersuchung des Timer-Jitters wird auf der anderen Seite die RTC-basierte Zeitbasis von Zephyr verwendet. In der verwendeten Konfiguration wird hierfür RTC1 mit einem 32,768-kHz-Low-Frequency-Clock betrieben. Da diese Zeitbasis auch während des Prozessorschlafs weiterläuft, eignet sie sich zur Messung periodischer Timerintervalle im Tickless-Betrieb. Die resultierende Auflösung beträgt etwa 30,5 µs pro Tick. Die Kombination aus Cortex-M4, Interrupt- und Zeitgeberhardware sowie den begrenzten Speicherressourcen bildet damit die technische Grundlage für die durchgeführten Benchmarks. (Nordic Semiconductors Doku)
+
+\section{Softwareumgebung}
+
+Das Buildbefindetsich auf demselben Ubuntu-Host im Workspace \textasciitilde{}/zephyr-ws. Dabei handelt es sich um eine eigene Python-venv (Virtual Environment). Das Flashen auf den Mikrocontroller erfolgt über denselben J-Link-OB-Debugprobe via west flash (nrfjprog-Runner). Die Asugabe erfolgt dann über denselben UART/ VCOM-Kanal. Pro Messung werden ebenfalls der Commit-Hash und das verwendete EXTRA\_CONF\_FILE notiert.
+
+

@@ -1,0 +1,340 @@
+% !TeX spellcheck = en_Us
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Masters/Doctoral Thesis 
+% LaTeX Template
+% Version 2.5 (27/8/17)
+%
+% This template was downloaded from:
+% http://www.LaTeXTemplates.com
+%
+% Version 2.x major modifications by:
+% Vel (vel@latextemplates.com)
+%
+% This template is based on a template by:
+% Steve Gunn (http://users.ecs.soton.ac.uk/srg/softwaretools/document/templates/)
+% Sunil Patel (http://www.sunilpatel.co.uk/thesis-template/)
+%
+% Template license:
+% CC BY-NC-SA 3.0 (http://creativecommons.org/licenses/by-nc-sa/3.0/)
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+
+
+\documentclass[
+12pt, % The default document font size, options: 10pt, 11pt, 12pt
+oneside, % Two side (alternating margins) for binding by default, uncomment to switch to one side
+ngerman, % ngerman for German
+singlespacing, % Single line spacing, alternatives: onehalfspacing, doublespacing or singlespacing
+%draft, % Uncomment to enable draft mode (no pictures, no links, overfull hboxes indicated)
+%nolistspacing, % If the document is onehalfspacing or doublespacing, uncomment this to set spacing in lists to single
+%liststotoc, % Uncomment to add the list of figures/tables/etc to the table of contents
+%toctotoc, % Uncomment to add the main table of contents to the table of contents
+%parskip, % Uncomment to add space between paragraphs
+%nohyperref, % Uncomment to not load the hyperref package
+headsepline, % Uncomment to get a line under the header
+%chapterinoneline, % Uncomment to place the chapter title next to the number on one line
+%consistentlayout, % Uncomment to change the layout of the declaration, abstract and acknowledgements pages to match the default layout
+]{MastersDoctoralThesis} % The class file specifying the document structure
+
+
+\usepackage[utf8]{inputenc} % Required for inputting international characters
+\usepackage[T1]{fontenc} % Output font encoding for international characters
+\usepackage{babel}
+
+
+\usepackage{mathpazo} % Use the Palatino font by default
+
+\usepackage[backend=biber,style=abbrevnat,natbib=true,style=numeric,firstinits=true,isbn=true,url=true,doi=true,sorting=none ]{biblatex} % Use the bibtex backend with the authoryear citation style (which resembles APA)
+
+\addbibresource{Quellen.bib} % The filename of the bibliography
+
+\usepackage[autostyle=true]{csquotes} % Required to generate language-dependent quotes in the bibliography
+
+\usepackage{graphicx} % Für Bilder und Optionen 
+\usepackage{wrapfig}
+
+\usepackage{pdfpages} % Zum Einfügen von PDF-Dateien als Grafik
+
+\usepackage{eurosym} % Für das € Symbol
+
+\usepackage{float} % Damit man Bilder fest an eine Stelle einbinden kann
+
+\usepackage{color} % Zum Definieren der Farben im Text und Quellecode
+
+\usepackage{listings} % Zum Einfügen der Quellcode Listings
+
+\usepackage[bottom]{footmisc}
+
+\usepackage{tabularx}
+
+\usepackage{booktabs}
+
+\usepackage{multirow}
+
+\usepackage{makecell}
+
+\usepackage{caption}
+
+\usepackage{subcaption}
+
+\usepackage{blindtext}
+
+\usepackage{scrextend}
+
+\usepackage{textcomp}
+
+\usepackage{amsmath}
+
+\usepackage{hyperref}
+
+\usepackage[inline]{enumitem}
+
+\usepackage{lipsum} 
+
+
+\DeclareUnicodeCharacter{2212}{-} % Braucht man für das Minuszeichen!
+
+\usepackage[titletoc,title]{appendix}
+
+\clubpenalty = 10000
+\widowpenalty = 10000
+\displaywidowpenalty = 10000
+
+%----------------------------------------------------------------------------------------
+%	MARGIN SETTINGS
+%----------------------------------------------------------------------------------------
+
+\geometry{
+	paper=a4paper, % Change to letterpaper for US letter
+	inner=2.5cm, % Inner margin
+	outer=3.8cm, % Outer margin
+	bindingoffset=.5cm, % Binding offset
+	top=1.5cm, % Top margin
+	bottom=1.5cm, % Bottom margin
+	%showframe, % Uncomment to show how the type block is set on the page
+}
+
+%----------------------------------------------------------------------------------------
+%	THESIS INFORMATION
+%----------------------------------------------------------------------------------------
+
+\thesistitle{Leistungsbewertung eines Echtzeitbetriebssystems auf ressourcenbeschr\"ankter Hardware} % Your thesis title, this is used in the title and abstract, print it elsewhere with \ttitle
+\supervisor{David Merkl} % Your supervisor's name, this is used in the title page, print it elsewhere with \supname
+\examiner{Prof. Dr. Oliver Hahm} % Your examiner's name, this is not currently used anywhere in the template, print it elsewhere with \examname
+\degree{Bachelor of Science} % Your degree name, this is used in the title page and abstract, print it elsewhere with \degreename
+\author{Nassim \textsc{Akalai}}% Your name, this is used in the title page and abstract, print it elsewhere with \authorname
+\addresses{} % Your address, this is not currently used anywhere in the template, print it elsewhere with \addressname
+\newcommand{\matrikelnummer}{1456967}
+\newcommand{\submissiondate}{21.09.2026}
+
+\subject{Informatik} % Your subject area, this is not currently used anywhere in the template, print it elsewhere with \subjectname
+\keywords{} % Keywords for your thesis, this is not currently used anywhere in the template, print it elsewhere with \keywordnames
+\university{Frankfurt University of Applied Sciences} % Your university's name and URL, this is used in the title page and abstract, print it elsewhere with \univname
+\department{Fachbereich 2} % Your department's name and URL, this is used in the title page and abstract, print it elsewhere with \deptname
+\group{\href{}{Informatik}} % Your research group's name and URL, this is used in the title page, print it elsewhere with \groupname
+\faculty{Cluster Informatik} % Your faculty's name and URL, this is used in the title page and abstract, print it elsewhere with \facname
+
+
+\AtBeginDocument{
+\hypersetup{pdftitle=\ttitle} % Set the PDF's title to your title
+\hypersetup{pdfauthor=\authorname} % Set the PDF's author to your name
+\hypersetup{pdfkeywords={Bachelorarbeit, Zephyr RTOS, Echtzeitbetriebssystem, ressourcenbeschr\"ankte Hardware}} % Set the PDF's keywords to your keywords
+\hypersetup{pdfsubject={Bachelor Thesis}}
+}
+
+\setlength{\parindent}{0pt} 
+
+% SOURCE COMMANDS
+\newcommand*{\quelle}[1]{\par\raggedleft\footnotesize Quelle:~#1}
+\newcommand*{\source}[1]{\par\raggedleft\footnotesize Source:~#1}
+
+% FIGURE AND TABLE COMMANDS
+\newcommand*{\fig}[1]{Abbildung~#1}
+
+% LABELING COMMANDS
+\newcommand*{\labelitem}[1]{\item[\textit{#1:}]}
+\newcommand*{\labelheader}[1]{\textit{#1:}}
+
+% LIST OF - SUBTITLE COMMAND
+\newcommand*{\listsubtitle}[1]{\item[{\Large\textbf{#1}}]\item[]}
+
+% TO-DO COMMANDS
+\newcommand*{\todo}[1]{{\color{red}\textbf{To-Do:} #1}}
+\newcommand*{\question}[1]{{\color{red}\textbf{Question:} #1}}
+\newcommand*{\comment}[1]{{\color{red}\textbf{Comment:} #1}}
+\newcommand*{\orange}[1]{{\color{orange}#1}}
+
+%---------------------------------------------------------------------------------------%
+%	TABLE COLORS																		%
+%---------------------------------------------------------------------------------------%
+\definecolor{grey}{HTML}{C0C0C0}
+
+%---------------------------------------------------------------------------------------%
+%	STANDARD LISTING																	%
+%---------------------------------------------------------------------------------------%
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\definecolor{mymauve}{rgb}{0.58,0,0.82}
+
+\lstset{ %
+	backgroundcolor=\color{gray!10!white},   % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}; should come as last argument
+	basicstyle=\fontfamily{pcr}\selectfont\footnotesize\color{black},       % the size of the fonts that are used for the code
+	breakatwhitespace=false,         % sets if automatic breaks should only happen at whitespace
+	breaklines=true,                 % sets automatic line breaking
+	captionpos=b,                    % sets the caption-position to bottom
+	commentstyle=\color{mygreen},    % comment style
+	deletekeywords={...},            % if you want to delete keywords from the given language
+	escapeinside={\%*}{*)},          % if you want to add LaTeX within your code
+	extendedchars=true,              % lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
+	frame=single,	                   % adds a frame around the code
+	keepspaces=true,                 % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
+	keywordstyle=\color{black},       % keyword style
+	language=Octave,                 % the language of the code
+	morekeywords={...},            % if you want to add more keywords to the set
+	numbers=none,                    % where to put the line-numbers; possible values are (none, left, right)
+	numbersep=5pt,                   % how far the line-numbers are from the code
+	numberstyle=\tiny\color{mygray}, % the style that is used for the line-numbers
+	rulecolor=\color{black},         % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+	showspaces=false,                % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+	showstringspaces=false,          % underline spaces within strings only
+	showtabs=false,                  % show tabs within strings adding particular underscores
+	stepnumber=1,                    % the step between two line-numbers. If it's 1, each line will be numbered
+	stringstyle=\color{mymauve},     % string literal style
+	tabsize=2,	                   % sets default tabsize to 2 spaces
+	title=\lstname                   % show the filename of files included with \lstinputlisting; also try caption instead of title
+}
+
+%---------------------------------------------------------------------------------------%
+%	BASH LISTING																		%
+%---------------------------------------------------------------------------------------%
+\definecolor{bashpurple}{RGB}{171,125,162}
+\definecolor{bashgreen}{RGB}{78,151,19}
+\definecolor{bashred}{RGB}{164,2,18}
+\newcommand{\CodeSymbol}[1]{\textcolor{bashred}{#1}}
+
+\lstdefinestyle{bash}{ %
+	basicstyle=\ttfamily\scriptsize,        % Code font, Examples: \footnotesize, \ttfamily
+	keywordstyle=\bfseries\color{black},     % Keywords font ('*' = uppercase)
+	commentstyle=\color{gray},              % Comments font
+	stringstyle=\color{string}\bfseries,
+	numbers=none,                           % Line nums position
+	%numberstyle=\tiny,                      % Line-numbers fonts
+	%stepnumber=1,                           % Step between two line-numbers
+	%numbersep=5pt,                          % How far are line-numbers from code
+	backgroundcolor=\color{gray!10!white},  % Choose background color
+	frame=single,                             % A frame around the code
+	tabsize=2,                              % Default tab size
+	captionpos=b,                           % Caption-position = bottom
+	breaklines=true,                        % Automatic line breaking?
+	breakatwhitespace=false,                % Automatic breaks only at whitespace?
+	showspaces=false,                       % Dont make spaces visible
+	showstringspaces=false,                  %
+	showtabs=false,                         % Dont make tabls visible
+	columns=flexible,                       % Column format
+	escapeinside={\%*}{*)},
+	literate={]}{{\CodeSymbol{]}}}1
+	{[}{{\CodeSymbol{[}}}1,
+	morekeywords={home,pi,thesis},            % if you want to add more keywords to the set
+	morekeywords=[2]{Unit,Service,Install,}, % HERE : add remove the parenthesis
+	keywordstyle=[2]\color{bashred},
+	morekeywords=[3]{Description,After,Type,ExecStart,Restart,WantedBy}, % HERE : add remove the parenthesis
+	keywordstyle=[3]\color{bashgreen},
+	morekeywords=[4]{on}, % HERE : add remove the parenthesis
+	keywordstyle=[4]\color{bashpurple}
+}
+
+
+%---------------------------------------------------------------------------------------%
+%	PYTHON LISTING																		%
+%---------------------------------------------------------------------------------------%
+\definecolor{keyword}{RGB}{0,0,128}
+\definecolor{init}{RGB}{178,0,178}
+\definecolor{self}{RGB}{148,85,141}
+\definecolor{string}{RGB}{0,128,128}
+\definecolor{sql}{RGB}{128,0,128}
+\definecolor{purple}{RGB}{113,45,111}
+
+\lstdefinestyle{python}{
+	language=Python,
+	basicstyle=\ttfamily\scriptsize,        % Code font, Examples: \footnotesize, \ttfamily
+	keywordstyle=\bfseries\color{keyword},     % Keywords font ('*' = uppercase)
+	commentstyle=\color{gray},              % Comments font
+	stringstyle=\color{string}\bfseries,
+	numbers=none,                           % Line nums position
+	%numberstyle=\tiny,                      % Line-numbers fonts
+	%stepnumber=1,                           % Step between two line-numbers
+	%numbersep=5pt,                          % How far are line-numbers from code
+	backgroundcolor=\color{gray!10!white},  % Choose background color
+	frame=single,                             % A frame around the code
+	tabsize=2,                              % Default tab size
+	captionpos=b,                           % Caption-position = bottom
+	breaklines=true,                        % Automatic line breaking?
+	breakatwhitespace=false,                % Automatic breaks only at whitespace?
+	showspaces=false,                       % Dont make spaces visible
+	showstringspaces=false,                  %
+	showtabs=false,                         % Dont make tabls visible
+	columns=flexible,                       % Column format
+	escapeinside={\%*}{*)},
+	morekeywords={float,int},
+	morekeywords=[2]{self}, % HERE : add remove the parenthesis
+	keywordstyle=[2]\color{self},
+	morekeywords=[3]{__init__, __del__, __doc__}, % HERE : add remove the parenthesis
+	keywordstyle=[3]\color{init},
+	morekeywords=[4]{baudrate,bytesize,parity,stopbits,timeout}, % HERE : add remove the parenthesis
+	keywordstyle=[4]\color{purple}
+}
+
+% INCLUDE ONLY 
+%\includeonly{chapters/background}
+
+\begin{document}
+
+\sloppy
+
+\frontmatter % Use roman page numbering style (i, ii, iii, iv...) for the pre-content pages
+\pagenumbering{Roman}
+
+\pagestyle{plain} % Default to the plain heading style until the thesis style is called for the body content
+
+%----------------------------------------------------------------------------------------
+%	TITLE PAGE
+%----------------------------------------------------------------------------------------
+\include{chapters/main}
+
+%----------------------------------------------------------------------------------------
+%	THESIS CONTENT - CHAPTERS
+%----------------------------------------------------------------------------------------
+
+\mainmatter % Begin numeric (1,2,3...) page numbering
+
+\pagestyle{thesis} % Return the page headers back to the "thesis" style
+
+% Include the chapters of the thesis as separate files from the Chapters folder
+% Uncomment the lines as you write the chapters
+
+% CHAPTER 1: Introduction
+\include{chapters/introduction}
+\include{chapters/grundlagen}
+\include{chapters/methodik}
+\appendix
+\include{chapters/notizen}
+
+%----------------------------------------------------------------------------------------
+%	THESIS CONTENT - APPENDICES
+%----------------------------------------------------------------------------------------
+%\include{chapters/appendices}
+
+%----------------------------------------------------------------------------------------
+%	BIBLIOGRAPHY
+%----------------------------------------------------------------------------------------
+\printbibliography[heading=bibintoc]
+\nocite{*}
+
+%----------------------------------------------------------------------------------------
+
+
+\end{document}  
