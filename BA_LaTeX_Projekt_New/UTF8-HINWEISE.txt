@@ -1,0 +1,14 @@
+UTF-8- und Umbruchkorrekturen
+===========================
+
+- Alle .tex-, .bib- und .cls-Dateien sind als 7-Bit-ASCII gespeichert.
+- Deutsche Umlaute, Eszett, Anfuehrungszeichen, Gedankenstriche, Ellipsen,
+  Mikro- und Eurozeichen werden im Fliesstext durch LaTeX-Befehle erzeugt.
+- Quellcode/Listings wurden ASCII-sicher transliteriert, weil das klassische
+  listings-Paket mehrbyte UTF-8 nicht zuverlaessig verarbeitet.
+- extendedchars ist deshalb deaktiviert.
+- \sloppy wurde entfernt. Stattdessen werden \fussy und ein begrenzter
+  emergencystretch verwendet, damit Blocksatz keine extremen Wortabstaende erzeugt.
+- Das Kompositum Sandwich-Muster ist gegen einen unguenstigen Zeilenumbruch geschuetzt.
+
+Empfohlener Compiler: pdfLaTeX. Biber fuer das Literaturverzeichnis ausfuehren.

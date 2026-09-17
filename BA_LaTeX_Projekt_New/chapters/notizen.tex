@@ -1,0 +1,181 @@
+% !TeX spellcheck = de_DE
+% Auto-konvertiert aus BA Entwurf.docx. Inhalt sprachlich/fachlich bitte final gegenpruefen.
+
+\chapter{Arbeitsnotizen und Quellenmaterial}
+\label{ch:notizen}
+
+\section{Abk{\"u}rzungen}
+
+\section{Quellen}
+
+\section{{\"U}berschriften}
+
+\section{Unterpunkte}
+
+\section{Eigene Aussagen(Tempor{\"a}r bis Quelle gefunden)}
+
+\section{Dateien}
+
+\section{Grundlagen:}
+
+Liu: s.26-31 RTS \& Embedded Systems
+
+Das: s.34-39 Embedded Systems\& MCU
+
+Das: s.47-49 MCU
+
+\section{Benchmarks:}
+
+Das: s.52-X Definitionen f{\"u}r ram, rom, interrupts etc.
+
+\section{Methodik Erweiterung (Noch nicht fertig, aus Zephyr Doku, einige davon wurden verwendet)}
+
+\subsection{Optimierungen}
+
+Zephyr l{\"a}sst sich hinsichtlich der Leistung, dem Energieverbrauch und dem Speicherbedarf (Footprint) optimieren.
+
+\section{Optimierung des Speicherbedarfs}
+
+\section{Stack Gr{\"o}{\ss}en}
+
+Die St{\"a}ck-Gr{\"o}{\ss}en der verschiedenen Systemthreads lassen sich f{\"u}r jede Anwendung anpassen. Dabei sind folgende Standardwerte gesetzt:
+
+CONFIG\_ISR\_STACK\_SIZE: 2048
+
+CONFIG\_MAIN\_STACK\_SIZE: 1024
+
+CONFIG\_IDLE\_STACK\_SIZE: 320
+
+CONFIG\_SYSTEM\_WORKQUEUE\_STACK\_SIZE: 1024
+
+CONFIG\_PRIVILEGED\_STACK\_SIZE: 1024
+
+\section{Peripherieger{\"a}te}
+
+Einige Peripherieger{\"a}te sind standardm{\"a}{\ss}ig aktiviert. Diese lassen sich ebenfalls folgenderma{\ss}en deaktivieren:
+
+CONFIG\_GPIO=n
+
+CONFIG\_SPI=n
+
+\section{Debug-/ Informationsoptionen}
+
+Die untenstehenden Optionen bieten die M{\"o}glichkeit, mehr Informationen {\"u}ber die laufende Anwendung auszugeben und dienen prim{\"a}r als Mittel f{\"u}r Debugging und Fehlerbehandlung (Error-Handling):
+
+CONFIG\_BOOT\_BANNER
+
+CONFIG\_DEBUG
+
+Der Boot Banner ist hierbei standardm{\"a}{\ss}ig aktiviert und kann einige Bytes in Anspruch nehmen.
+
+\section{MPU/ MMU-Unterst{\"u}tzung}
+
+Um weiterhin Speicher zu sparen und die Leistung zu verbessern, kann die MPU/ MMU-Unterst{\"u}tzung deaktiviert werden. Dadurch geht jedoch die erweiterte Stack-{\"U}berpr{\"u}fung und -Unterst+{\"u}tzun verloren.
+
+\subsection{Optimierungswerkzeuge}
+
+Zephyr verf{\"u}gt {\"u}ber einige Werkzeuge, welche die M{\"o}glichkeit bieten, den Footprint, die Speichernutzung und Datenstrukturen {\"u}ber verschiedene Build-System-Ziele (Targets) analysieren zu k{\"o}nnen.
+
+\section{Footprint und Speichernutzung}
+
+F{\"u}r die Ansicht und Analyse von RAM-, ROM-, und der Stack-Nutzung in erzeugten Images bietet Zephyr zudem drei unterschiedliche Targets. Die Werkzeuge laufen demnach auf dem final erzeugten Image und stellen Informationen {\"u}ber die Gr{\"o}{\ss}e von Symbolen und Code dar, welche sowohl im RAM als auch im ROM verwendet werden. Au{\ss}erdem kann mithilfe von Compiler Funktionen auch eine Worst-Case-Stack-Nutzungsanalyse erzeugen. Diese Werkzeuge wurden in dieser Arbeit verwendet:
+
+\subsection{ram\_report}
+
+Alle kompiliiertenobjekte und ihre RAM-Nutzung werden in tabellarischer Form aufgelistet. Aus dieser Tabelle kann man Informationen wie Bytes pro Symbol und dem prozentualen Anteil einsehen. Diese Daten werden basierend auf dem Speicherort des Objekts im Dateisystembaum und der Datei gruppiert, die das Symbol enth{\"a}lt. Dies l{\"a}sst sich mit folgenden West Befehlen umsetzen:
+
+west build -b boardnamefilename
+
+west build -t ram\_report
+
+\subsection{rom\_report}
+
+Alle kompiliiertenobjekte und ihre ROM-Nutzung werden in tabellarischer Form aufgelistet. Aus dieser Tabelle kann man Informationen wie Bytes pro Symbol und dem prozentualen Anteil einsehen. Diese Daten werden basierend auf dem Speicherort des Objekts im Dateisystembaum und der Datei gruppiert, die das Symbol enth{\"a}lt. Dies l{\"a}sst sich mit folgenden West Befehlen umsetzen:
+
+west build -b boardnamefilename
+
+west build -t rom\_report
+
+\subsection{ram\_plot/ rom\_plot}
+
+Zus{\"a}tzlich zu den Targets ram\_report und rom\_report erzeugen ram\_plot und rom\_plot Speichernutzungsberichte, aber in Form von Diagrammen. Die Segmente sind interargierbar und hilft dabei, durch die Verzeichnisstruktur zu navigieren und weitere Details auslesen zu k{\"o}nnen. Sobald der folgende Befehl ausgef{\"u}hrt wird, wird zuerst ein CLI-Bericht erstellt und anschlie{\ss}end ein Browser-Fenster ge{\"o}ffnet:
+
+west build -b boardname filename
+
+west build -t ram\_plotoderrom\_plot
+
+\subsection{Dashboard}
+
+Durch dieses Werkzeug l{\"a}sst sich ein HTML-Dashboard erzeugen, welches die verschiedenen Werkzeugausgaben und Artefakte in einer einzige Ansicht zusammenfasst. Neben der zusammenfassung der Build-Ergebnisse sind zus{\"a}tzlich vollst{\"a}ndige Speicherberichte zu RAM und ROM in Form von Tabellen und Diagrammen enthalten. Kconfig-Symbolwerte und deren Quekllen werden ebenfalls generiert. Zudem wird ein navigierbarer Devicetree-Ansicht erzeugt, in welchen weitere Details eingesehen werden k{\"o}nnen. Dies wird durch folgenden Befehl erm{\"o}glicht:
+
+west build -b boardnamefilename
+
+west build -t dashboard
+
+\subsection{Flashing}
+
+\section{Zephyr - Grundlagen}
+
+\subsection{Kernel}
+
+\subsection{Threading}
+
+\subsection{Scheduling}
+
+\subsection{Synchronization}
+
+\subsection{Interrupts}
+
+\subsection{Timing}
+
+\subsection{Memory}
+
+\section{Messgrundlagen}
+
+\subsection{Logging}
+
+\subsection{Tracing}
+
+\subsection{Instrumentation}
+
+\subsection{CPU load}
+
+\section{Konfiguration}
+
+\subsection{CMake}
+
+\subsection{Devicetree}
+
+\subsection{Kconfig}
+
+\subsection{Snippets}
+
+\subsection{Flashing}
+
+\subsection{Sysbuild?}
+
+\section{Hardware -- Cortex M4F}
+
+\subsection{GPIO}
+
+\subsection{Timer}
+
+\subsection{UART}
+
+\subsection{Bluetooth}
+
+\subsection{SPI/ I2C}
+
+https://www.zephyrproject.org/learn-about/
+
+https://thesis.dial.uclouvain.be/server/api/core/bitstreams/c6169167-70c9-42c0-9654-c01f87638fb0/content
+
+https://link.springer.com/book/10.1007/978-1-4614-3143-5
+
+https://link.springer.com/book/10.1007/978-3-031-28701-5
+
+https://link.springer.com/book/10.1007/978-3-031-73098-6
+
+https://www.intel.com/content/www/us/en/developer/articles/community/zephyr-story-how-became-self-sustaining-ecosystem.html
+
+
