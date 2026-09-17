@@ -1,0 +1,159 @@
+\chapter{Benchmark-Design}
+Dieses Kapitel beschreibt für jeden der fünf Benchmarks im Detail, was genau gemessen wird, wie der Messpunkt technisch implementiert ist, welche Fehlerquellen dabei kontrolliert werden müssen und warum die jeweilige Metrik für die Forschungsfrage relevant ist. Vor den DWT-basierten Messungen wird \lstinline[style=fileinline]|k_busy_wait(100)| gemessen. Bei 64 MHz liegt der nominelle Wert bei 6400 CPU-Zyklen inklusive des Eigenaufwands der Funktion. Als Abnahmekriterium gelten \lstinline[style=fileinline]!|mean - 6400| < 1 %! und eine Standardabweichung unter zwei Zyklen. Der Test erkennt dabei grobe Fehler von Taktquelle, DWT oder Abzug des Messaufwands, beweist jedoch nicht die exakte Lage asynchroner Messpunkte oder die Abwesenheit von Interrupts in anderen Benchmarks.
+
+\section{Kontextwechsel-Latenz}
+\begin{lstlisting}[style=basecode,language=C]
+/* Variante 1: sem_wakeup */
+…
+timing_t t0 = bench_now();
+k_sem_give(&wake_sem);
+/* Worker hat t_stamp gesetzt und blockiert wieder */
+bench_stats_add(&st, bench_elapsed(t0, t_stamp) - bench_overhead_cycles());
+…
+/* Variante 2: yield (im Worker-Thread gemessen) */
+…
+timing_t t1 = bench_now();
+bench_stats_add(&yield_stats, bench_elapsed(t_stamp, t1) - bench_overhead_cycles());
+k_yield();
+\end{lstlisting}
+\textbf{Definition} Gemessen wird die Zeit zwischen dem Zeitstempel direkt vor der auslösenden Kerneloperation und dem früh im Zielthread erfassten Zeitstempel. Das Intervall umfasst dabei die bis zu diesem Messpunkt durchlaufenen Verwaltungs- und Umschaltoperationen. Diese Zeit umfasst auf einem Cortex-M die Verwaltung des auslösenden Kernelaufrufs, die Scheduler-Entscheidung und das Sichern und Laden des Thread-Kontexts. Laut Zephyr-Dokumentation ist ein Kontextwechsel unter anderem genau dann möglich, wenn ein Thread über \lstinline[style=fileinline]|k_sem_take()| in den wartenden Zustand übergeht oder über \lstinline[style=fileinline]|k_sem_give()|/ \lstinline[style=fileinline]|k_yield()| einen anderen Thread bereit macht bzw. die CPU freiwillig abgibt. Diese Reschedule Points bilden das Grundkonzept der beiden gemessenen Varianten.
+
+\textbf{Messmethode} Diese Untersuchung unterscheidet zwischen zwei Varianten des Kontextwechsels:
+
+\begin{longtable}{p{0.235\linewidth}p{0.235\linewidth}p{0.235\linewidth}p{0.235\linewidth}}
+\toprule
+Variante & Aufbau & Messpunkt Start & Messpunkt Ende \\
+\midrule
+\lstinline[style=fileinline]|ctx_switch_sem_wakeup| & Ein höherpriorer Worker-Thread blockiert auf \lstinline[style=fileinline]|k_sem_take()|, der niederpriore Haupt-Thread ruft k\_sem\_give() auf & Direkt vor \lstinline[style=fileinline]|k_sem_give()| & Zeitstempel als erste C-seitige Aktion nach Rückkehr aus \lstinline[style=fileinline]|k_sem_take()| \\
+\lstinline[style=fileinline]|ctx_switch_yield| & Zwei gleichpriore Threads übergeben sich kooperativ über \lstinline[style=fileinline]|k_yield()| & Direkt vor \lstinline[style=fileinline]|k_yield()| & Zeitstempel am Beginn der entsprechenden Worker-Iteration \\
+\bottomrule
+\end{longtable}
+
+Bei der ersten Variante garantiert die höhere Priorität des Workers, dass dieser nach \lstinline[style=fileinline]|k_sem_give()| sofort läuft, bevor der Haupt-Thread weiterläuft. Laut Zephyr-Dokumentation wird ein Semaphor an den wartenden Thread mit der höchsten Priorität vergeben. Bei der zweiten Variante wechseln sich beide Threads ab, da die Zeitscheiben-Rotation in der Minimal-Konfiguration deaktiviert ist (siehe 4.4.1). Dabei reiht \lstinline[style=fileinline]|k_yield()| den aufrufenden Thread laut Zephyr-Dokumentation ans Ende der Liste der bereiten Threads mit gleicher Priorität ein und übergibt die CPU dann sofort an den nächsten. Beide Varianten werden hierbei auch von Zephyrs eigenem Referenz-Benchmark \lstinline[style=fileinline]|tests/benchmarks/latency_measure| erfasst, was einen externen Validierungsvergleich ermöglicht.
+
+\textbf{Fehlerquellen} Interrupts können die gemessene Zeit verlängern. Tickless-Betrieb verringert periodische Systemtimer-Unterbrechungen, schließt andere Interruptquellen jedoch nicht aus. Eine geringe Selbsttest-Streuung belegt deshalb nicht, dass während den Benchmark-Reihen keine Interrupts auftreten. Die erste Worker-Ankunft läuft dabei über den Thread-Startpfad und wird durch die Warm-up-Durchläufe verworfen. MPU und hardwaregestützter Stack-Schutz sind in allen drei Benchmark-Profilen deaktiviert. Deren Zusatzkosten werden ohne separaten Vergleichslauf nicht quantifiziert.
+
+\textbf{Relevanz} Kontextwechsel wurden als Metrik genommen, weil sie die Grundkosten jeder Multithreading-Architektur sind und bestimmen, wie schnell ein RTOS auf Ereignisse reagieren kann. Zudem bestimmen sie, wie fein die Aufgaben eines Systems in einzelne Threads zerlegt werden können, ohne dass der Wechsel selbst zum limitierenden Faktor wird.
+
+\section{Interrupt-Latenz}
+\begin{lstlisting}[style=basecode,language=C]
+static void trigger_isr(const void *arg)
+{
+    …
+    isr_stamp = bench_now();
+    isr_count++;
+}
+…
+uint32_t expected = isr_count + 1;
+timing_t t0 = bench_now();
+NVIC_SetPendingIRQ(TRIGGER_IRQN);
+while (isr_count != expected) { /* aktives Warten */ }
+bench_stats_add(&st, bench_elapsed(t0, isr_stamp) - bench_overhead_cycles());
+\end{lstlisting}
+\textbf{Definition} Hierbei handelt es sich um die Zeit zwischen dem softwareseitigen Auslösen eines Interrupts und dem Zeitstempel am Anfang des registrierten C-Handlers. Der Exception-Eintritt, der Zephyr-Interrupt-Wrapper und der Compilerprolog liegen vor diesem Messpunkt und sind daher Teil des Messwerts. Eine ISR ist laut Zephyr-Dokumentation eine Funktion, die asynchron als Reaktion auf einem Interrupt ausgeführt wird und dabei die Ausführung des aktuellen Threads unterbricht. Ziel ist es hierbei, mit möglichst geringem Messaufwand reagieren zu können.
+
+\textbf{Messmethode} Für einen softwareseitig kontrollierten Auslösezeitpunkt benutzt der Benchmark die IRQ-Leitung von \lstinline[style=fileinline]|TIMER1| und setzt deren Pending-Bit über \lstinline[style=fileinline]|NVIC_SetPendingIRQ()|. Die \lstinline[style=fileinline]|TIMER1|-Peripherie muss dafür nicht selbst als laufender Zeitgeber betrieben werden. Voraussetzung ist hierbei, dass die ausgewählte IRQ-Leitung im untersuchten Build nicht wo anders benutzt wird. Der Endzeitstempel wird am Anfang des registrierten C-Handlers erfasst. Exception-Eintritt, Zephyr-Interrupt-Wrapper und Compiler-Prolog liegen vor diesem Messpunkt und sind Teil des Messwerts.
+
+\textbf{Fehlerquellen} Der Trigger-IRQ besitzt die numerische Priorität 3 und kann Thread-Mode-Code unterbrechen. Er kann durch Interrupts höherer Dringlichkeit unterbrochen oder durch Interruptsperren verzögert werden. Die Warteschleife wird erst nach dem Endzeitstempel ausgeführt und geht deshalb nicht in die Zeitdifferenz ein. Die Wahl von \lstinline[style=fileinline]|TIMER1| und seiner IRQ-Nummer ist plattformspezifisch. Dabei gehört \lstinline[style=fileinline]|NVIC_SetPendingIRQ()| zur CMSIS-Core-Schnittstelle. Der dazugehörige Typ heißt \lstinline[style=fileinline]|IRQn_Type|, und der benutzte Header ist \lstinline[style=fileinline]|<nrfx.h>|.
+
+\textbf{Relevanz }Ein RTOS verspricht, im Gegensatz zu einem klassischen Betriebssystem, Determinismus. Die Interrupt-Latenz zeigt, wie stark Kernel-Funktionen, wie bspw. das Logging-Subsystem, den zeitkritischen Reaktionspfad eines Systems beeinflussen.
+
+\section{Timer-Jitter}
+\begin{lstlisting}[style=basecode,language=C]
+static void timer_cb(struct k_timer *t)
+{
+    uint32_t now_cycles = sys_clock_cycle_get_32();
+
+    if (have_prev) {
+        uint32_t delta = now_cycles - prev_cycles;
+
+        if (count >= CONFIG_BENCHLIB_WARMUP) {
+            bench_stats_add(&st, delta);
+        }
+        count++;
+    } else {
+        have_prev = true;
+    }
+    prev_cycles = now_cycles;
+
+    if (count >= CONFIG_BENCHLIB_WARMUP + CONFIG_BENCHLIB_ITERATIONS) {
+        k_timer_stop(t);
+        done = true;
+    }
+}
+\end{lstlisting}
+\textbf{Definition:} Erfasst wird die beobachtete Periode eines periodischen Timers. Jitter wird anhand der Abweichungen und Streuung dieser Perioden im Vergleich zu, der in \lstinline[style=fileinline]|TIMERMETA| angegebenen nominellen RTC-Periode beurteilt.
+
+\textbf{Messmethode:} Der \lstinline[style=fileinline]|k_timer| besitzt eine angeforderte Periode von 10 ms. Im Callback wird \lstinline[style=fileinline]|sys_clock_cycle_get_32()| gelesen. Das Delta von zwei aufeinanderfolgenden Reads ist der Abstand der Messpunkte in RTC-Systemtimerzyklen. Der Messpunkt liegt erst im C-Callback und beinhaltet deshalb auch Verzögerungen vor seiner Ausführung.
+
+\textbf{Fehlerquellen:} Der erste Callback liefert noch keinen Messwert, da keine Vorgänger existieren. Danach werden zudem zehn Perioden verworfen. Die Auflösung beträgt etwa 30,52 µs. Interrupts mit höherer Dringlichkeit, Interruptsperren und andere Kernelaktivität können den Callback verzögern. Ein aktiviertes Logging-Subsystem ohne erzeugte Log-Nachrichten erzeugt dabei nicht automatisch fortlaufende UART-Last.
+
+\textbf{Relevanz:} Die Messung zeigt, wie stabil periodische Callback-Messpunkte unter dem jeweiligen kompletten Konfigurationsprofil sind.
+
+\section{Heap-Allokationsgeschwindigkeit}
+\begin{lstlisting}[style=basecode,language=C]
+…
+bench_stats_reset(&alloc_st);
+    bench_stats_reset(&free_st);
+
+    for (int i = 0; i < CONFIG_BENCHLIB_WARMUP + CONFIG_BENCHLIB_ITERATIONS; i++) {
+        timing_t t0 = bench_now();
+        void *p = k_malloc(ALLOC_SIZE);
+        timing_t t1 = bench_now();
+
+        timing_t t2 = bench_now();
+        k_free(p);
+        timing_t t3 = bench_now();
+
+        if (i >= CONFIG_BENCHLIB_WARMUP) {
+            bench_stats_add(&alloc_st, bench_elapsed(t0, t1) -
+                            bench_overhead_cycles());
+            bench_stats_add(&free_st, bench_elapsed(t2, t3) -
+                           bench_overhead_cycles());
+        }
+    }
+…
+\end{lstlisting}
+\textbf{Definition }Bei dieser Metrik wurde die Zeit für die Allokation durch \lstinline[style=fileinline]|k_malloc()| bzw. Freigabe durch \lstinline[style=fileinline]|k_free()| eines Speicherblocks mit fester Größe aus dem Zephyr-System-Heap gemessen. Die Größe des Blocks wurde hierbei auf 64 Byte festgelegt
+
+\textbf{Messmethode }Pro Iteration wird ein Block angefordert und direkt danach wieder freigegeben, anstatt mehrere Blöcke gleichzeitig zu halten. Dabei verhalten sich \lstinline[style=fileinline]|k_malloc()| und \lstinline[style=fileinline]|k_free()| laut Zephyr-Dokumentation semantisch wie die gleichnamigen Standard-C-Funktionen. Sie arbeiten zudem auf einem einzigen, über \lstinline[style=fileinline]|CONFIG_HEAP_MEM_POOL_SIZE| definierten System-Heap. Dabei werden Allokation und Freigabe als zwei getrennte Zeiten gemessen, jeweils direkt vor und nach dem entsprechenden Aufruf.
+
+\textbf{Fehlerquellen }Das direkte Freigeben hält den Systemheap nahezu leer und untersucht damit einen vorteilhaften, unfragmentierten Zustand. Der Fragmentierungsbenchmark untersucht anschließend nur die Allokierbarkeit eines getrennten \lstinline[style=fileinline]|k_heap|. Er misst jedoch nicht die Laufzeit von \lstinline[style=fileinline]|k_malloc()| unter Fragmentierung. Aussagen über Worst-Case-Allokationszeiten oder den Einfluss eines fragmentierten Systemheaps lassen sich aus diesen beiden Benchmarks deshalb nicht treffen.
+
+\textbf{Relevanz }Der Allokationsbenchmark prüft den Rückgabewert von \lstinline[style=fileinline]|k_malloc()| nicht. Seine Werte dürfen nur als erfolgreiche 64-Byte-Allokationen interpretiert werden, wenn der Erfolg im Messcode zudem bestätigt wird.
+
+\section{Heap-Fragmentierung}
+\begin{lstlisting}[style=basecode,language=C]
+static void print_stats(const char *label)
+{
+    printk("HEAPSTATS,%s,requested=%zu,unrequested=%zu\n",
+       label, bytes_allocated,
+       (size_t)FRAG_HEAP_SIZE - bytes_allocated);
+}
+/* Bisektion: groessten Block finden, der aktuell am Stueck allokierbar
+ * ist. */
+static size_t probe_largest_block(void)
+{
+    size_t lo = 0, hi = FRAG_HEAP_SIZE;
+
+    while (lo + 8 < hi) {
+        size_t mid = (lo + hi) / 2;
+        void *p = k_heap_alloc(&frag_heap, mid, K_NO_WAIT);
+
+        if (p) {
+            k_heap_free(&frag_heap, p);
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    return lo;
+}
+\end{lstlisting}
+\textbf{Definition:} Ausgegeben werden erfolgreich angeforderte Nutzbytes, die rechnerische Differenz zur bereitgestellten Heap-Größe und die größte im 8-Byte-Suchraster erfolgreich geprüfte Einzelanforderung. Dabei ist \lstinline[style=fileinline]|unrequested| keine Messung von freien Allokatorbytes, da Metadaten, Ausrichtung und Rundung nicht beachtet werden.
+
+\textbf{Messmethode:} Von 32 angeforderten 128-Byte-Blöcken werden nur erfolgreiche Allokationen verbucht. Beim Freigeben werden NULL-Einträge übersprungen. Die Bisektions-Probe allokiert und gibt Testblöcke direkt wieder frei. Wegen der Abbruchbedingung liefert sie eine praktische Näherung im 8-Byte-Raster und nicht den mathematisch genau größten Freiblock.
+
+\textbf{Fehlerquelle:} Die Probe benutzt den untersuchten Allokator selbst. Nach jedem erfolgreichen Versuch sind keine weiteren Nutzblöcke mehr angefordert. Daraus folgt aber nicht unbedingt, dass die internen Verwaltungsstrukturen unverändert sind.
+
+\textbf{Relevanz:} Externe Fragmentierung kann dazu führen, dass eine große zusammenhängende Anforderung nicht erfolgreich ist, obwohl die Summe der nicht angeforderten bzw. an sich verfügbaren Bereiche größer ist. Dieses Risiko entsteht durch dynamische Allokation und begrenzten zusammenhängenden Speicher, nicht nur durch das Fehlen einer MMU.

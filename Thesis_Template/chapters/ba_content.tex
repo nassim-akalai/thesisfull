@@ -657,7 +657,7 @@ BENCHEND
 
 
 \chapter{Benchmark-Design}
-Dieses Kapitel beschreibt für jeden der fünf Benchmarks im Detail, was genau gemessen wird, wie der Messpunkt technisch implementiert ist, welche Fehlerquellen dabei kontrolliert werden müssen und warum die jeweilige Metrik für die Forschungsfrage relevant ist. Vor den DWT-basierten Messungen wird \lstinline[style=fileinline]|k_busy_wait(100)| gemessen. Bei 64 MHz liegt der nominelle Wert bei 6400 CPU-Zyklen inklusive des Eigenaufwands der Funktion. Als Abnahmekriterium gelten \lstinline[style=fileinline]!|mean − 6400| < 1 %! und eine Standardabweichung unter zwei Zyklen. Der Test erkennt dabei grobe Fehler von Taktquelle, DWT oder Abzug des Messaufwands, beweist jedoch nicht die exakte Lage asynchroner Messpunkte oder die Abwesenheit von Interrupts in anderen Benchmarks.
+Dieses Kapitel beschreibt für jeden der fünf Benchmarks im Detail, was genau gemessen wird, wie der Messpunkt technisch implementiert ist, welche Fehlerquellen dabei kontrolliert werden müssen und warum die jeweilige Metrik für die Forschungsfrage relevant ist. Vor den DWT-basierten Messungen wird \lstinline[style=fileinline]|k_busy_wait(100)| gemessen. Bei 64 MHz liegt der nominelle Wert bei 6400 CPU-Zyklen inklusive des Eigenaufwands der Funktion. Als Abnahmekriterium gelten \lstinline[style=fileinline]!|mean - 6400| < 1 %! und eine Standardabweichung unter zwei Zyklen. Der Test erkennt dabei grobe Fehler von Taktquelle, DWT oder Abzug des Messaufwands, beweist jedoch nicht die exakte Lage asynchroner Messpunkte oder die Abwesenheit von Interrupts in anderen Benchmarks.
 
 \section{Kontextwechsel-Latenz}
 \begin{lstlisting}[style=basecode,language=C]
@@ -1266,6 +1266,13 @@ Die Datei \lstinline[style=fileinline]|coap_server.c| implementiert hierbei eine
 \subsection{Firmware-Update über Sysbuild, MCUboot und MCUmgr}
 Damit diese Anwendung, wie in Abschnitt 2.7.4 beschrieben, auch Firmware-Updates unterstützt, wird sie über das Sysbuild-System gebaut. Dieses erzeugt aus dem eigentlichen Anwendungscode und einem weiteren MCUboot-Bootloader-Image ein gemeinsames Firmware-Abbild. Das Anwendungs-Image selbst wird hierbei dafür passend für die Flash-Partitionen gebaut und signiert, die von MCUboot verwaltet werden. Auf der Anwendungsseite wird zudem das MCUmgr-Management-Subsystem eingebunden, darunter die Bildverwaltungs- und die Betriebssystem-Kommandogruppe. Darüber kann ein neues Firmware-Abbild empfangen und anschließend ein Neustart ausgelöst werden. Für dieses Management-Protokoll wird hierbei als Übertragungsweg UDP benutzt. Dadurch kann ein Firmware-Update über denselben Thread-Netzwerkpfad übertragen werden, über den auch der CoAP-Sensordienst erreichbar ist.
 
+\chapter{Messergebnisse}
+\label{ch:messergebnisse}
+% Wird nach Abschluss der neuen Messkampagne ergänzt.
+
+\chapter{Diskussion}
+\label{ch:diskussion}
+% Wird nach Auswertung der Messergebnisse ergänzt.
 
 \chapter{Validität}
 
@@ -1296,3 +1303,11 @@ Die Kalibrierung erfasst jedoch nur den Zeitaufwand des Zähler-Auslesens selbst
 Der Selbsttest (siehe Kapitel 5) ist eine weitere Kontrolle für die Nachvollziehbarkeit der gemeinsam benutzten Zeitmessungs- und Auswertungskette. Er prüft die gemeinsame Wirkung von Zeitbasis, Abzug des Messaufwands und Auswertung anhand einer vorgegebenen Busy-Wait-Dauer auf Nachvollziehbarkeit. Die einzelnen Teile werden dadurch nicht unabhängig voneinander validiert. Das hierbei definierte Abnahmekriterium ist in allen Selbsttests durchgeführt und erfüllt worden.
 
 \section{Limitierungen}
+
+\chapter{Fazit}
+\label{ch:fazit}
+% Wird nach Auswertung der Messergebnisse ergänzt.
+
+\chapter{Ausblick}
+\label{ch:ausblick}
+% Wird nach Auswertung der Messergebnisse ergänzt.

@@ -104,7 +104,19 @@ headsepline, % Uncomment to get a line under the header
 \usepackage{lipsum} 
 
 
-\DeclareUnicodeCharacter{2212}{-} % Braucht man für das Minuszeichen!
+% Unicode-Zeichen aus der Word-Konvertierung fuer pdfLaTeX abbilden.
+\DeclareUnicodeCharacter{00AD}{\-}
+\DeclareUnicodeCharacter{00B5}{\textmu}
+\DeclareUnicodeCharacter{2013}{--}
+\DeclareUnicodeCharacter{2018}{`}
+\DeclareUnicodeCharacter{2019}{'}
+\DeclareUnicodeCharacter{201A}{\glq}
+\DeclareUnicodeCharacter{201C}{\grqq}
+\DeclareUnicodeCharacter{201D}{\grqq}
+\DeclareUnicodeCharacter{201E}{\glqq}
+\DeclareUnicodeCharacter{2026}{\ldots}
+\DeclareUnicodeCharacter{20AC}{\euro}
+\DeclareUnicodeCharacter{2212}{-}
 
 \usepackage[titletoc,title]{appendix}
 
@@ -200,8 +212,8 @@ headsepline, % Uncomment to get a line under the header
 \lstdefinelanguage{DTS}{morekeywords={compatible,status,chosen,aliases,model},sensitive=true,morecomment=[l]{//},morecomment=[s]{/*}{*/},morestring=[b]"}
 \lstdefinelanguage{Kconfig}{morekeywords={config,menuconfig,bool,string,int,hex,default,depends,on,select,if,endif,menu,endmenu,choice,endchoice,help},sensitive=true,morecomment=[l]{\#},morestring=[b]"}
 \lstdefinestyle{basecode}{basicstyle=\ttfamily\small,backgroundcolor=\color{CodeBg},frame=single,rulecolor=\color{CodeFrame},framerule=0.5pt,breaklines=true,breakatwhitespace=false,showstringspaces=false,columns=fullflexible,keepspaces=true,keywordstyle=\color{CodeKeyword}\bfseries,directivestyle=\color{CodePreprocessor},identifierstyle=\color{CodeIdentifier},stringstyle=\color{CodeString},commentstyle=\color{CodeComment}\itshape,numbers=none,xleftmargin=1.5em,framexleftmargin=1em,aboveskip=.8em,belowskip=.8em}
-\lstdefinestyle{fileinline}{basicstyle=\ttfamily\small,backgroundcolor=\color{FileBoxBg}}
-\lstdefinestyle{codeinline}{basicstyle=\ttfamily\small\color{CodeKeyword},backgroundcolor=\color{CodeBg}}
+\lstdefinestyle{fileinline}{basicstyle=\ttfamily\small,backgroundcolor=\color{FileBoxBg},frame=single,rulecolor=\color{CodeFrame},framerule=0.5pt}
+\lstdefinestyle{codeinline}{basicstyle=\ttfamily\small\color{CodeKeyword},backgroundcolor=\color{CodeBg},frame=single,rulecolor=\color{CodeFrame},framerule=0.5pt}
 
 \lstset{ %
 	backgroundcolor=\color{gray!10!white},   % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}; should come as last argument
@@ -339,7 +351,17 @@ headsepline, % Uncomment to get a line under the header
 % Include the chapters of the thesis as separate files from the Chapters folder
 % Uncomment the lines as you write the chapters
 
-\include{chapters/ba_content}
+\include{chapters/introduction}
+\include{chapters/grundlagen}
+\include{chapters/verwandte_arbeiten}
+\include{chapters/methodik}
+\include{chapters/benchmark_design}
+\include{chapters/implementierung}
+\include{chapters/messergebnisse}
+\include{chapters/diskussion}
+\include{chapters/validitaet}
+\include{chapters/fazit}
+\include{chapters/ausblick}
 
 %----------------------------------------------------------------------------------------
 %	THESIS CONTENT - APPENDICES
